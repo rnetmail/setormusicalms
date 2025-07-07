@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: setormusicalms_db
       POSTGRES_USER: mestre # Use o seu user real
-      POSTGRES_PASSWORD: umasenhamuitosegura # Use a sua senha real
+      POSTGRES_PASSWORD: Setor@MS25 # Use a sua senha real
     restart: always
 
   # Serviço do Backend (Django)
@@ -27,7 +27,7 @@ services:
       ALLOWED_HOSTS: "*" # Permite todos os hosts, seguro pois não está exposto publicamente
       POSTGRES_DB: setormusicalms_db
       POSTGRES_USER: mestre # Use o seu user real
-      POSTGRES_PASSWORD: umasenhamuitosegura # Use a sua senha real
+      POSTGRES_PASSWORD: Setor@MS25 # Use a sua senha real
       SQL_HOST: db
       SQL_PORT: 5432
     # NENHUMA porta exposta para o público. Apenas o Nginx fala com ele.
