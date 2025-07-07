@@ -1,0 +1,18 @@
+# docker-compose.yml
+
+services:
+  # V- Este é o seu serviço PostgreSQL -! V
+  db:
+    image: postgres:14-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env
+    restart: always
+
+  backend:
+    build: ./backend
+    # ...
+    depends_on:
+      - db  # <-- Aqui dizemos ao backend para esperar pelo serviço 'db' antes de iniciar
+    # ...
