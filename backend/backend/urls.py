@@ -1,5 +1,10 @@
+# backend/backend/urls.py
+
+from django.contrib import admin
+# A linha abaixo importa as funções 'path' e 'include'
+from django.urls import path, include
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # CORRETO: Envia tudo que for /api/ para o ficheiro da app 'api'
     path('api/', include('api.urls')),
 ]
