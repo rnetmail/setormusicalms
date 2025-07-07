@@ -1,17 +1,18 @@
-# docker-compose.yml 
+# docker-compose.yml (VERSÃO FINAL PARA DEPLOY)
 
 services:
+  # Serviço do Banco de Dados
   db:
     image: postgres:14-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-    # As variáveis são definidas diretamente aqui
     environment:
       POSTGRES_DB: setormusicalms_db
-      POSTGRES_USER: mestre
-      POSTGRES_PASSWORD: Setor@MS25 # Use a sua senha real aqui
+      POSTGRES_USER: mestre # Use o seu user real
+      POSTGRES_PASSWORD: umasenhamuitosegura # Use a sua senha real
     restart: always
 
+  # Serviço do Backend (Django)
   backend:
     build: ./backend
     restart: always
@@ -20,22 +21,27 @@ services:
       - media_volume:/app/media
     depends_on:
       - db
-    # As variáveis são definidas diretamente aqui
     environment:
-      # Configurações do Django
-      SECRET_KEY: 05&4v2cr133p0qq)4a*d$e*40n1-rwyf6ol8ghe3o%p2-lm1us # Use a sua chave real
+      SECRET_KEY: sua-chave-secreta-super-forte-aqui # Use a sua chave real
       DEBUG: 0
-      ALLOWED_HOSTS: localhost,127.0.0.1,setormusicalms.art.br
-      CORS_ALLOWED_ORIGINS: https://setormusicalms.art.br,http://setormusicalms.art.br,http://localhost
-      
-      # Configurações do Banco de Dados
+      ALLOWED_HOSTS: "*" # Permite todos os hosts, seguro pois não está exposto publicamente
       POSTGRES_DB: setormusicalms_db
-      POSTGRES_USER: mestre
-      POSTGRES_PASSWORD: Setor@MS25 # Use a sua senha real aqui
+      POSTGRES_USER: mestre # Use o seu user real
+      POSTGRES_PASSWORD: umasenhamuitosegura # Use a sua senha real
       SQL_HOST: db
       SQL_PORT: 5432
+    # NENHUMA porta exposta para o público. Apenas o Nginx fala com ele.
+
+  # Serviço do Frontend (O nosso Nginx)
+  frontend:
+    # Constrói a imagem a partir do Dockerfile que criámos na raiz
+    build: .
     ports:
-      - "8000:8000"
+      # Mapeia a porta 8001 da VPS para a porta 80 do nosso contentor Nginx
+      - "8001:80"
+    depends_on:
+      - backend
+    restart: always
 
 volumes:
   postgres_data:
