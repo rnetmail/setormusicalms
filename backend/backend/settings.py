@@ -28,7 +28,8 @@ INSTALLED_APPS = [
     # Apps de terceiros
     'rest_framework',
     'corsheaders',
-
+    'rest_framework.authtoken',
+    
     # Suas apps
     'api',
 ]
