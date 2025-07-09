@@ -4,46 +4,76 @@ services:
   # Serviço do Banco de Dados
   db:
     image: postgres:14-alpine
+    container_name: setormusicalms-db-1
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
-      POSTGRES_DB: setormusicalms_db
-      POSTGRES_USER: mestre # Use o seu user real
-      POSTGRES_PASSWORD: Setor@MS25 # Use a sua senha real
-    restart: always
+      POSTGRES_DB: ${POSTGRES_DB:-setormusicalms_db}
+      POSTGRES_USER: ${POSTGRES_USER:-mestre}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Setor@MS25}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mestre}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # Serviço do Backend (Django)
   backend:
     build: ./backend
-    restart: always
+    container_name: setormusicalms-backend-1
+    restart: unless-stopped
     volumes:
       - static_volume:/app/static
       - media_volume:/app/media
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      SECRET_KEY: sua-chave-secreta-super-forte-aqui # Use a sua chave real
-      DEBUG: 0
-      ALLOWED_HOSTS: "*" # Permite todos os hosts, seguro pois não está exposto publicamente
-      POSTGRES_DB: setormusicalms_db
-      POSTGRES_USER: mestre # Use o seu user real
-      POSTGRES_PASSWORD: Setor@MS25 # Use a sua senha real
+      SECRET_KEY: ${SECRET_KEY:-sua-chave-secreta-super-forte-aqui}
+      DEBUG: ${DEBUG:-0}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+      POSTGRES_DB: ${POSTGRES_DB:-setormusicalms_db}
+      POSTGRES_USER: ${POSTGRES_USER:-mestre}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Setor@MS25}
       SQL_HOST: db
       SQL_PORT: 5432
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://setormusicalms.art.br}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASS: ${ADMIN_PASS:-Setor@MS25}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     # NENHUMA porta exposta para o público. Apenas o Nginx fala com ele.
 
   # Serviço do Frontend (O nosso Nginx)
   frontend:
     # Constrói a imagem a partir do Dockerfile que criámos na raiz
     build: .
+    container_name: setormusicalms-frontend-1
     ports:
       # Mapeia a porta 8001 da VPS para a porta 80 do nosso contentor Nginx
       - "8001:80"
     depends_on:
-      - backend
-    restart: always
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 volumes:
   postgres_data:
   static_volume:
   media_volume:
+
+networks:
+  default:
+    name: setormusicalms_network
