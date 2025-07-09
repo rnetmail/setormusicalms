@@ -57,6 +57,8 @@ jobs:
         username: ${{ secrets.USER_ADMIN }}
         password: ${{ secrets.VPS_SSH_PASS }}
         port: ${{ secrets.VPS_SSH_PORT }}
+        timeout: 300s
+        command_timeout: 600s
         script: |
           echo "🚀 === Iniciando Deploy do Setor Musical MS ==="
           echo "📅 Data: $(date '+%Y-%m-%d %H:%M:%S')"
