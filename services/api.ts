@@ -13,21 +13,32 @@ const apiFetch = async (url: string, options: RequestInit = {}) => {
 
     if (token) {
         headers['Authorization'] = `Token ${token}`;
+        console.log('Sending token:', token.substring(0, 10) + '...');
+    } else {
+        console.log('No token found in sessionStorage');
     }
+
+    console.log('Making request to:', `${API_BASE_URL}${url}`);
+    console.log('Headers:', headers);
 
     const response = await fetch(`${API_BASE_URL}${url}`, {
         ...options,
         headers,
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
         let errorData;
         try {
             errorData = await response.json();
+            console.error('Error response:', errorData);
         } catch (e) {
             errorData = { message: response.statusText };
+            console.error('Error parsing response:', e);
         }
-        throw new Error(errorData.detail || errorData.message || 'Ocorreu um erro na API');
+        throw new Error(errorData.detail || errorData.message || errorData.error || 'Ocorreu um erro na API');
     }
 
     if (response.status === 204) { // No Content

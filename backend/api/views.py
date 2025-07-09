@@ -112,16 +112,30 @@ def login_view(request):
     username = request.data.get('username')
     password = request.data.get('password')
     
+    if not username or not password:
+        return Response({'error': 'Username e password são obrigatórios'}, status=400)
+    
     user = authenticate(username=username, password=password)
     
     if user:
+        if not user.is_active:
+            return Response({'error': 'Conta desativada'}, status=400)
+            
         # Se o utilizador for autenticado com sucesso, obtém ou cria um token para ele
-        token, _ = Token.objects.get_or_create(user=user)
+        token, created = Token.objects.get_or_create(user=user)
+        
         # Retorna os dados do utilizador juntamente com o token
-        serializer = UserSerializer(user)
         return Response({
             'token': token.key,
-            'user': serializer.data
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_staff': user.is_staff,
+                'is_superuser': user.is_superuser,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+            }
         })
         
     return Response({'error': 'Credenciais Inválidas'}, status=400)
