@@ -106,11 +106,25 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Configuração do CORS
-CORS_ALLOWED_ORIGINS_str = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost')
+CORS_ALLOWED_ORIGINS_str = os.environ.get('CORS_ALLOWED_ORIGINS', 'https://setormusicalms.art.br,http://localhost:3000,http://localhost:8001')
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_str.split(',')]
 
 # Permitir CORS para desenvolvimento
 CORS_ALLOW_ALL_ORIGINS = bool(int(os.environ.get('DEBUG', 0)))
+
+# Configurações adicionais de CORS
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # Configuração do Django REST Framework
 REST_FRAMEWORK = {
