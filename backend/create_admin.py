@@ -17,13 +17,16 @@ def create_admin_user():
     
     # Dados do admin
     username = 'admin'
-    email = 'admin@setormusicalms.art.br'
+    email = 'rnetmail@gmail.com'  # Usando email correto
     password = 'Setor@MS25'
     
     # Verificar se já existe
     if User.objects.filter(username=username).exists():
-        print(f"✅ Usuário '{username}' já existe")
+        print(f"✅ Usuário '{username}' já existe - atualizando permissões")
         user = User.objects.get(username=username)
+        # Atualizar dados
+        user.email = email
+        user.set_password(password)  # Garantir senha correta
     else:
         # Criar usuário
         user = User.objects.create_superuser(
@@ -36,6 +39,7 @@ def create_admin_user():
     # Garantir que é superuser e staff
     user.is_superuser = True
     user.is_staff = True
+    user.is_active = True
     user.save()
     
     print(f"📋 Dados do usuário:")
@@ -43,6 +47,7 @@ def create_admin_user():
     print(f"   Email: {user.email}")
     print(f"   Is Staff: {user.is_staff}")
     print(f"   Is Superuser: {user.is_superuser}")
+    print(f"   Is Active: {user.is_active}")
     print(f"   Password: {password}")
     
     return user
