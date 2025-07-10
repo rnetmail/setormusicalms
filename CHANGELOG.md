@@ -2,7 +2,7 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
-## [2.0.0] - 2025-07-09
+## [2.0.1] - 2025-07-09
 
 ### 🚀 Adicionado
 - **Workflow GitHub Actions** para deploy automático
