@@ -7,7 +7,6 @@ from django.contrib.auth.models import User
 class GroupType(models.TextChoices):
     CORAL = 'Coral', 'Coral'
     ORQUESTRA = 'Orquestra', 'Orquestra'
-    SETOR = 'Setor', 'Setor'
 
 class Naipe(models.TextChoices):
     TENOR = 'Tenor', 'Tenor'
