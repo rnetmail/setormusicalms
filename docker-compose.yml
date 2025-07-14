@@ -1,79 +1,44 @@
-# docker-compose.yml (VERSÃO FINAL PARA DEPLOY)
+version: '3.8'
 
 services:
-  # Serviço do Banco de Dados
-  db:
-    image: postgres:14-alpine
-    container_name: setormusicalms-db-1
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-setormusicalms_db}
-      POSTGRES_USER: ${POSTGRES_USER:-mestre}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Setor@MS25}
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mestre}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # Serviço do Backend (Django)
   backend:
     build: ./backend
-    container_name: setormusicalms-backend-1
-    restart: unless-stopped
-    volumes:
-      - static_volume:/app/static
-      - media_volume:/app/media
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      SECRET_KEY: ${SECRET_KEY:-sua-chave-secreta-super-forte-aqui}
-      DEBUG: ${DEBUG:-0}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
-      POSTGRES_DB: ${POSTGRES_DB:-setormusicalms_db}
-      POSTGRES_USER: ${POSTGRES_USER:-mestre}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Setor@MS25}
-      SQL_HOST: db
-      SQL_PORT: 5432
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://setormusicalms.art.br}
-      ADMIN_USER: ${ADMIN_USER:-admin}
-      ADMIN_PASS: ${ADMIN_PASS:-Setor@MS25}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    # NENHUMA porta exposta para o público. Apenas o Nginx fala com ele.
-
-  # Serviço do Frontend (O nosso Nginx)
-  frontend:
-    # Constrói a imagem a partir do Dockerfile que criámos na raiz
-    build: .
-    container_name: setormusicalms-frontend-1
+    container_name: setormusical_fastapi
     ports:
-      # Mapeia a porta 8001 da VPS para a porta 80 do nosso contentor Nginx
-      - "8001:80"
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://setormusicalms:Setor@MS25@db:5432/setormusicalms
+      - SECRET_KEY=sua-chave-secreta-super-forte-aqui-producao
+      - CORS_ORIGINS=https://setormusicalms.art.br,http://localhost:3000
+    volumes:
+      - ./backend:/app
     depends_on:
-      backend:
-        condition: service_healthy
+      - db
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+    command: uvicorn app.main_working:app --host 0.0.0.0 --port 8000
+
+  frontend:
+    build: .
+    container_name: setormusical_frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./dist:/usr/share/nginx/html
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    container_name: setormusical_db
+    environment:
+      POSTGRES_DB: setormusicalms
+      POSTGRES_USER: setormusicalms
+      POSTGRES_PASSWORD: Setor@MS25
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
 
 volumes:
   postgres_data:
-  static_volume:
-  media_volume:
 
-networks:
-  default:
-    name: setormusicalms_network
