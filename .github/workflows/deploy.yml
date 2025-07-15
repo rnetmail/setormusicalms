@@ -1,13 +1,17 @@
 # Deploy para VPS otimizado para Fast API
+
 name: CI/CD - Build, Test, and Deploy
 
 on:
   push:
     branches:
       - main
+    # O workflow só será acionado se a mensagem do commit contiver "Deploy to VPS"
+    if: "contains(github.event.head_commit.message, 'Deploy to VPS')"
 
 env:
   # Define o registro e os nomes das imagens para fácil reutilização
+
   REGISTRY: ghcr.io
   IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
   IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
