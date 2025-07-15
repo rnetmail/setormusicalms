@@ -1,3 +1,5 @@
+# setormusicalms/.github/workflows/deploy.yml
+
 name: CI/CD - Build, Test, and Deploy
 
 on:
@@ -7,17 +9,36 @@ on:
 
 env:
   # Define o registro e os nomes das imagens para fácil reutilização
+  REGISTRY: ghcr.io
+  IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
+  IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
   PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
 
 jobs:
-  # JOB 1: Roda em TODOS os pushes para 'main' para garantir a integridade do código
+  # JOB 1: Roda em TODOS os pushes para 'main' para garantir a qualidade do código
   lint_and_test:
     runs-on: ubuntu-latest
     steps:
+      - name: 1. Checkout do código
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 3. Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt ruff
+
+      - name: 4. Verificar código com Linter (Ruff)
+        run: ruff check backend/
+
       - name: Rodar testes com Pytest
         run: pytest backend/
 
-  # JOB 2: Roda APENAS se a mensagem do commit contiver 'Deploy to VPS'
+  # JOB 2: Constrói e publica imagens. Roda APENAS se o commit contiver 'Deploy to VPS'
   build_and_push:
     needs: lint_and_test
     # Esta condição garante que o build e o push só ocorram quando você comandar
@@ -25,11 +46,64 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write # Permissão para publicar imagens no registro do GitHub
+    steps:
+      - name: 1. Checkout do código
+        uses: actions/checkout@v4
+
+      - name: 2. Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 3. Build e Push da imagem do Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
+
+      - name: 4. Build e Push da imagem do Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
           push: true
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
   # JOB 3: Roda automaticamente se o 'build_and_push' for bem-sucedido
   deploy:
     needs: build_and_push
+---- a/full/path/filename
+---- /dev/null
+--->
     runs-on: ubuntu-latest
+    steps:
+      - name: Deploy na VPS via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          password: ${{ secrets.VPS_SSH_PASS }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            cd ${{ env.PROJECT_PATH_ON_VPS }}
+            echo ">> Criando arquivo .env"
+            echo "IMAGE_NAME_BACKEND=${{ env.IMAGE_NAME_BACKEND }}:latest" > .env
+            echo "IMAGE_NAME_FRONTEND=${{ env.IMAGE_NAME_FRONTEND }}:latest" >> .env
+            
+            echo ">> Logando no GitHub Container Registry na VPS"
+            echo "${{ secrets.GIT_PAT }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+            echo ">> Baixando as imagens mais recentes do registro"
+            docker-compose pull
+
+            echo ">> Reiniciando os serviços com as novas imagens"
+            docker-compose up -d
+
+            echo ">> Limpando imagens Docker antigas para economizar espaço"
+            docker image prune -af
+
+            echo ">> Deploy finalizado com sucesso!"
 
