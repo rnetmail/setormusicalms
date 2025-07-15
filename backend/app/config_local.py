@@ -1,6 +1,5 @@
 # setormusicalms/backend/app/config_local.py
 from pydantic_settings import BaseSettings
-from typing import List
 
 class Settings(BaseSettings):
     """
@@ -9,3 +8,4 @@ class Settings(BaseSettings):
     sem a necessidade de um arquivo .env.
     """
     API_V1_STR: str = "/api/v1"
+
