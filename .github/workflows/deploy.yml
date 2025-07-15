@@ -1,4 +1,4 @@
-# setormusicalms/.github/workflows/deploy.yml
+# .github/workflows/deploy.yml
 name: CI/CD - Build, Test, and Deploy
 
 on:
@@ -34,7 +34,7 @@ jobs:
       - name: 4. Verificar código com Linter (Ruff)
         run: ruff check backend/
 
-      - name: Rodar testes com Pytest
+      - name: 5. Rodar testes com Pytest
         run: pytest backend/
 
   # JOB 2: Constrói e publica imagens. Roda APENAS se o commit contiver 'Deploy to VPS'
@@ -74,9 +74,6 @@ jobs:
   # JOB 3: Roda automaticamente se o 'build_and_push' for bem-sucedido
   deploy:
     needs: build_and_push
----- a/full/path/filename
----- /dev/null
---->
     runs-on: ubuntu-latest
     steps:
       - name: Deploy na VPS via SSH
@@ -105,4 +102,3 @@ jobs:
             docker image prune -af
 
             echo ">> Deploy finalizado com sucesso!"
-
