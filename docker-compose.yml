@@ -1,44 +1,21 @@
-version: '3.8'
-
 services:
   backend:
     build: ./backend
-    container_name: setormusical_fastapi
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://setormusicalms:Setor@MS25@db:5432/setormusicalms
-      - SECRET_KEY=sua-chave-secreta-super-forte-aqui-producao
-      - CORS_ORIGINS=https://setormusicalms.art.br,http://localhost:3000
+    container_name: setormusicalms_backend_sqlite
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
-    depends_on:
-      - db
-    restart: unless-stopped
-    command: uvicorn app.main_working:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    # As variáveis de ambiente do banco de dados já não são necessárias aqui
 
   frontend:
-    build: .
-    container_name: setormusical_frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: setormusicalms_frontend_nginx
     ports:
-      - "3000:80"
-    volumes:
-      - ./dist:/usr/share/nginx/html
+      - "8001:80"
+    depends_on:
+      - backend # Agora depende diretamente do backend
     restart: unless-stopped
-
-  db:
-    image: postgres:15
-    container_name: setormusical_db
-    environment:
-      POSTGRES_DB: setormusicalms
-      POSTGRES_USER: setormusicalms
-      POSTGRES_PASSWORD: Setor@MS25
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-
