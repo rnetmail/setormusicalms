@@ -6,8 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database.database import engine, Base
 import models.user
 import models.repertorio
-import models.agenda
-# A importação 'models.recado' foi removida pois não era utilizada.
+# A importação 'models.agenda' foi removida pois não era utilizada.
 
 # Importando o roteador principal da aplicação
 from app.main_production import router as main_router
