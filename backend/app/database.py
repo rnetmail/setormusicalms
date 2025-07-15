@@ -1,15 +1,20 @@
-# backend/app/database.py
+# setormusicalms/backend/app/database.py
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# O caminho para o banco de dados agora é absoluto dentro do container,
-# apontando para o volume que configuramos no docker-compose.yml.
-DATABASE_URL = "sqlite:////app/data/setormusical.db"
+# Tenta obter a URL do banco de dados da variável de ambiente.
+# Se não estiver definida, usa o valor padrão para produção dentro do Docker.
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////app/data/setormusical.db")
 
-# Garante que o diretório de dados exista antes de tentar criar o arquivo do DB
-os.makedirs(os.path.dirname(DATABASE_URL.split("://")[1]), exist_ok=True)
+# Garante que o diretório de dados exista antes de tentar criar o arquivo do DB,
+# mas apenas se não estivermos usando um banco de dados em memória.
+if "sqlite:///" in DATABASE_URL and not ":memory:" in DATABASE_URL:
+    db_path = DATABASE_URL.split(":///")[1]
+    db_dir = os.path.dirname(db_path)
+    if db_dir: # Só cria o diretório se ele for especificado
+        os.makedirs(db_dir, exist_ok=True)
 
 engine = create_engine(
     DATABASE_URL, connect_args={"check_same_thread": False}
@@ -25,4 +30,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
