@@ -1,6 +1,7 @@
+# setormusicalms/backend/app/main_local.py
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config_local import settings
 from app.database_local import engine
 from models import user, repertorio, agenda, recado
 from app.routers import auth, users, repertorio as repertorio_router, agenda as agenda_router, recados
