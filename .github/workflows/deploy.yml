@@ -38,7 +38,8 @@ jobs:
             
             # Executa o script de inicialização do banco (se necessário)
             # O '|| true' garante que o workflow não falhe se o admin já existir
-            sudo docker-compose exec backend python -m app.init_admin || true
+            sudo docker-compose exec backend python init_admin.py || true
+            # sudo docker-compose exec backend python -m app.init_admin || true (anterior)
 
             # Mostra o status final dos contêineres
             echo "Deploy concluído! Status dos contêineres:"
