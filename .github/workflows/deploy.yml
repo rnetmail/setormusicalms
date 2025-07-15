@@ -26,14 +26,14 @@ jobs:
             cd ~/setormusical/setormusicalms
 
             # CORREÇÃO 1: Adiciona o repositório como seguro para o Git
-            sudo git config --global --add safe.directory /home/setormusicalms/setormusical/setormusicalms
+            git config --global --add safe.directory /home/setormusicalms/setormusical/setormusicalms
             
             # Puxa as últimas alterações do repositório
-            sudo git pull origin main
+            git pull origin main
             
             # Para, apaga os contêineres antigos e sobe os novos a partir das imagens reconstruídas
-            sudo docker-compose down
-            sudo docker-compose up -d --build --force-recreate
+            docker-compose down
+            docker-compose up -d --build --force-recreate
             
             # Aguarda um pouco para os serviços subirem
             echo "Aguardando 15 segundos para os serviços iniciarem..."
@@ -41,8 +41,8 @@ jobs:
             
             # Executa o script de inicialização do banco (se necessário)
             # O '|| true' garante que o workflow não falhe se o admin já existir
-            sudo docker-compose exec backend python init_admin.py || true
+            docker-compose exec backend python init_admin.py || true
 
             # Mostra o status final dos contêineres
             echo "Deploy concluído! Status dos contêineres:"
-            sudo docker-compose ps
+            docker-compose ps
