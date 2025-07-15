@@ -1,21 +1,29 @@
-setormusicalms/backend/app/main.py
-
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
-from . import crud, models, schemas # Seus módulos de CRUD, Models e Schemas
-from .database import engine, get_db
+# setormusicalms/backend/app/main.py
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+from .database import engine
+from . import models
 
-# Cria as tabelas no banco de dados (apenas se não existirem)
+# Esta linha garante que o SQLAlchemy crie todas as tabelas
+# definidas nos seus módulos de models quando a aplicação iniciar.
 models.Base.metadata.create_all(bind=engine)
 
-# Configuração de CORS mais segura
+app = FastAPI(
+    title="Setor Musical MS API",
+    description="API para o sistema de gerenciamento do Setor Musical MS.",
+    version="1.0.0"
+)
+
+# Configura o Cross-Origin Resource Sharing (CORS).
+# É importante para permitir que seu frontend (rodando em outra porta/domínio)
+# possa fazer requisições para esta API.
 origins = [
     "http://localhost",
-    "http://localhost:3000", # Endereço do frontend em desenvolvimento
-    # "https://seu-dominio-de-producao.com", # Adicionar o domínio de produção aqui
+    "http://localhost:3000",
+    "http://localhost:8080",
+    # Adicione aqui o domínio do seu frontend em produção.
+    # Ex: "https://www.setormusicalms.com.br"
 ]
 
 app.add_middleware(
@@ -26,13 +34,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Ponto de entrada raiz para verificar se a API está no ar.
 @app.get("/")
-def read_root():
+async def read_root():
+    """
+    Endpoint raiz que retorna uma mensagem de boas-vindas.
+    Útil para health checks simples.
+    """
     return {"message": "Bem-vindo à API do Setor Musical MS"}
 
-# Exemplo de rota utilizando a injeção de dependência do banco de dados
-@app.get("/instrumentos/", response_model=list[schemas.Instrumento])
-def read_instrumentos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    instrumentos = crud.get_instrumentos(db, skip=skip, limit=limit)
-    return instrumentos
-
+# Exemplo de como incluir rotas de outros arquivos para organizar o código.
+# Descomente e ajuste conforme necessário.
+# from .routers import users, items
+#
+# app.include_router(users.router, prefix="/api/v1", tags=["Users"])
+# app.include_router(items.router, prefix="/api/v1", tags=["Items"])
