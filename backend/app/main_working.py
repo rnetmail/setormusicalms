@@ -432,3 +432,19 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
 
+def get_all_repertorio(
+    db: Session = Depends(get_db)
+):
+    query = db.query(RepertorioItem).filter(RepertorioItem.active)
+    if type_filter:
+        query = query.filter(RepertorioItem.type == type_filter)
+    if year_filter:
+def get_repertorio_by_group_and_year(group_type: str, year: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(RepertorioItem).filter(
+        RepertorioItem.type == group_type,
+        RepertorioItem.active
+    )
+    if year:
+        query = query.filter(func.strftime("%Y", RepertorioItem.date) == year)
+
+
