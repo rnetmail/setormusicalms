@@ -4,9 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Importando os módulos de banco de dados e modelos
 from app.database import engine, Base
-# Corrigido: a importação agora é absoluta, pois 'models' está no mesmo
-# nível que 'app', e não dentro dele.
-import models
+# A importação 'import models' foi removida pois era redundante.
+# Os modelos são carregados e registrados com o SQLAlchemy através da
+# importação do 'main_router' abaixo.
 
 # Importando o roteador principal da aplicação
 from app.main_production import router as main_router
