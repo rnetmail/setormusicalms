@@ -1,53 +1,69 @@
 # Deploy para VPS otimizado para Fast API
-name: Test and Deploy to VPS
+name: CI/CD - Test and Deploy to VPS
 
 on:
   push:
     branches:
       - main
 
+env:
+  PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: 1. Checkout do código
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: 2. Configurar Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: 3. Instalar dependências do Backend
         run: |
-          pip install -r backend/requirements.txt
-      
-      - name: Run tests with pytest
-        run: pytest backend/tests/
+          python -m pip install --upgrade pip
+          pip install -r ./backend/requirements.txt
+
+      - name: 4. Rodar testes com Pytest
+        working-directory: ./backend
+        run: pytest
 
   deploy:
     needs: test # O deploy só roda se os testes passarem
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: 1. Checkout do código
         uses: actions/checkout@v4
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: 2. Sincronizar arquivos para a VPS via SCP
+        uses: appleboy/scp-action@master
         with:
-          ssh-private-key: ${{ secrets.VPS_SSH_PASS :-Setor@MS25 }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          password: ${{ secrets.VPS_SSH_PASS }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          source: "./"
+          target: ${{ env.PROJECT_PATH_ON_VPS }}
+          strip_components: 1
 
-      - name: Sync files to VPS
+      - name: 3. Criar .env e reiniciar a aplicação na VPS
         run: |
-          ssh-keyscan -H ${{ secrets.VPS_HOST :-}} >> ~/.ssh/known_hosts
-          rsync -avz --delete ./ ${{ secrets.VPS_SSH_USER : -setormusicalms}}@${{ secrets.VPS_HOST :-ip-194-195-221-198.cloudezapp.io }}:/home/${{ secrets.VPS_SSH_USER :-setormusicalms }}/setormusicalms/
-
-      - name: Restart application on VPS
-        run: |
-          ssh ${{ secrets.VPS_SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          cd /home/${{ secrets.VPS_SSH_USER }}/setormusicalms/
-          docker-compose down
-          docker-compose up -d --build
-          echo "Deploy finalizado com sucesso!"
-          EOF
+          sshpass -p "${{ secrets.VPS_SSH_PASS }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.VPS_SSH_PORT }} ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_HOST }} '
+          cd ${{ env.PROJECT_PATH_ON_VPS }}
+          
+          echo ">> Criando arquivo .env com os segredos da aplicação..."
+          echo "ADMIN_PASS=${{ secrets.ADMIN_PASS }}" > .env
+          echo "USER_ADMIN=${{ secrets.USER_ADMIN }}" >> .env
+          
+          echo ">> Reiniciando containers com Docker Compose..."
+          docker-compose -f docker-compose.yml down
+          docker-compose -f docker-compose.yml up -d --build
+          
+          echo ">> Limpando imagens antigas do Docker..."
+          docker image prune -af
+          
+          echo ">> Deploy finalizado com sucesso!"
+          '
 
