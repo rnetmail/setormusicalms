@@ -36,7 +36,7 @@ jobs:
             echo "Aguardando 15 segundos para os serviços iniciarem..."
             sleep 15
             
-            # (Opcional) Executa o script de criação do admin se necessário para o FastAPI
+            # Executa o script de inicialização do banco (se necessário)
             # O '|| true' garante que o workflow não falhe se o admin já existir
             sudo docker-compose exec backend python -m app.init_admin || true
 
