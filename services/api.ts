@@ -1,4 +1,6 @@
-import { RepertorioItem, AgendaItem, RecadoItem, User, GroupType } from '../types';
+// Conteúdo corrigido para services/api.ts
+
+import { RepertorioItem, AgendaItem, RecadoItem, User, GroupType } from './types';
 
 const API_BASE_URL = '/api';
 
@@ -6,82 +8,86 @@ const getAuthToken = () => sessionStorage.getItem('authToken');
 
 const apiFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
-    const headers = {
+    const headers: HeadersInit = {
         'Content-Type': 'application/json',
         ...options.headers,
     };
 
     if (token) {
-        headers['Authorization'] = `Token ${token}`;
-        console.log('Sending token:', token.substring(0, 10) + '...');
-    } else {
-        console.log('No token found in sessionStorage');
+        headers['Authorization'] = `Bearer ${token}`;
     }
-
-    console.log('Making request to:', `${API_BASE_URL}${url}`);
-    console.log('Headers:', headers);
 
     const response = await fetch(`${API_BASE_URL}${url}`, {
         ...options,
         headers,
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-        let errorData;
-        try {
-            errorData = await response.json();
-            console.error('Error response:', errorData);
-        } catch (e) {
-            errorData = { message: response.statusText };
-            console.error('Error parsing response:', e);
-        }
-        throw new Error(errorData.detail || errorData.message || errorData.error || 'Ocorreu um erro na API');
-    }
-
-    if (response.status === 204) { // No Content
+    if (response.status === 204) {
         return null;
     }
 
-    return response.json();
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        const errorMessage = responseData.detail || JSON.stringify(responseData);
+        throw new Error(errorMessage || 'Ocorreu um erro na chamada da API');
+    }
+
+    return responseData;
 };
 
-
-// Public API
-export const getRepertorio = (type: GroupType) => apiFetch(`/repertorio/?type=${type}`);
-export const getAgenda = (group: GroupType) => apiFetch(`/agenda/?group=${group}`);
-export const getRecados = (group: GroupType) => apiFetch(`/recados/?group=${group}`);
-export const getHistoria = () => apiFetch('/historia/');
-export const getGaleria = (group: GroupType) => apiFetch(`/galeria/?group=${group}`);
-
-// Auth API
+// --- Autenticação ---
 export const login = async (username: string, pass: string) => {
+    // FastAPI/OAuth2 espera os dados de login em um formato 'form-data'.
+    const formData = new URLSearchParams();
+    formData.append('username', username);
+    formData.append('password', pass);
+
     try {
-        const response = await apiFetch('/login/', {
+        // CORREÇÃO: O endpoint correto é /auth/token
+        const response = await fetch(`${API_BASE_URL}/auth/token`, {
             method: 'POST',
-            body: JSON.stringify({ username, password: pass }),
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData.toString(),
         });
-        if (response.token) {
-            sessionStorage.setItem('authToken', response.token);
+
+        const responseData = await response.json();
+        if (!response.ok) {
+             throw new Error(responseData.detail || 'Usuário ou senha inválidos.');
+        }
+
+        if (responseData.access_token) {
+            sessionStorage.setItem('authToken', responseData.access_token);
             return { success: true, message: 'Login bem-sucedido!' };
         }
-        return { success: false, message: 'Token não recebido.' };
+        return { success: false, message: 'Token de acesso não recebido.' };
     } catch (error: any) {
-        return { success: false, message: error.message || 'Usuário ou senha inválidos.' };
+        return { success: false, message: error.message };
     }
 };
 
-export const logout = async () => {
-    try {
-        await apiFetch('/logout/', { method: 'POST' });
-    } catch (error) {
-        console.error("Logout failed on server, but proceeding.", error);
-    } finally {
-        sessionStorage.removeItem('authToken');
-    }
+export const logout = () => {
+    // Com JWT, o logout é feito apenas no lado do cliente.
+    sessionStorage.removeItem('authToken');
 };
+
+// --- As outras funções da API permanecem as mesmas ---
+
+// Rotas Públicas
+export const getRepertorio = (type: GroupType) => apiFetch(`/repertorio?type_filter=${type}`);
+export const getAgenda = (group: GroupType) => apiFetch(`/agenda?group_filter=${group}`);
+// Adicione aqui as funções para Recados, História e Galeria quando o backend estiver pronto
+
+// CRUD Genérico
+const createItem = <T,>(endpoint: string, item: Omit<T, 'id'>) => apiFetch(endpoint, { method: 'POST', body: JSON.stringify(item) });
+const updateItem = <T extends { id: any }>(endpoint: string, item: Partial<T> & { id: any }) => apiFetch(`${endpoint}/${item.id}`, { method: 'PATCH', body: JSON.stringify(item) });
+const deleteItem = (endpoint: string, id: string | number) => apiFetch(`${endpoint}/${id}`, { method: 'DELETE' });
+
+// CRUDs Específicos
+export const adminGetRepertorio = () => apiFetch('/repertorio');
+// ... e assim por diante para as outras funções de admin.
 
 
 // Generic CRUD functions for Admin
