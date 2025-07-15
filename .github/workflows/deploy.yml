@@ -5,11 +5,13 @@ on:
   push:
     branches:
       - main
+    # Executa apenas se a mensagem de commit contiver "Deploy to VPS"
+    if: "contains(github.event.head_commit.message, 'Deploy to VPS')"
 
 jobs:
   deploy:
+    name: Deploy na VPS
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'Deploy to VPS')
 
     steps:
       - name: Conectar via SSH e fazer Deploy
@@ -20,20 +22,24 @@ jobs:
           password: ${{ secrets.VPS_SSH_PASS }}
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
+            # Navega para o diretório do projeto
             cd ~/setormusical/setormusicalms
+            
+            # Puxa as últimas alterações do repositório
             git pull origin main
             
-            # Para e recria os contêineres com as novas imagens
+            # Para, apaga os contêineres antigos e sobe os novos a partir das imagens reconstruídas
             sudo docker-compose down
             sudo docker-compose up -d --build --force-recreate
-
+            
             # Aguarda um pouco para os serviços subirem
             echo "Aguardando 15 segundos para os serviços iniciarem..."
             sleep 15
             
-            # (Opcional) Executa o script de criação do admin se necessário
-            # Este comando pode falhar se o admin já existir, o que é normal.
-            sudo docker-compose exec backend python -m app.init_admin || echo "Admin já existe ou ocorreu um erro não crítico."
+            # (Opcional) Executa o script de criação do admin se necessário para o FastAPI
+            # O '|| true' garante que o workflow não falhe se o admin já existir
+            sudo docker-compose exec backend python -m app.init_admin || true
 
-            # Mostra o status final
+            # Mostra o status final dos contêineres
+            echo "Deploy concluído! Status dos contêineres:"
             sudo docker-compose ps
