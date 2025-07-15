@@ -22,6 +22,8 @@ origins = [
     "http://localhost",
     "http://localhost:3000",
     "http://localhost:8080",
+    "http://www.setormusicalms.com.br",
+    "https://www.setormusicalms.com.br",
     # Adicione aqui o domínio do seu frontend em produção.
     # Ex: "https://www.setormusicalms.com.br"
 ]
