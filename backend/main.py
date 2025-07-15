@@ -1,22 +1,25 @@
 # setormusicalms\backend\amain.py
-
-from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from routers import auth
 from database.database import engine, Base
-import models.user # Importa o módulo para que o SQLAlchemy o reconheça ao criar as tabelas
 
 # Cria todas as tabelas no banco de dados (se não existirem)
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(
-    title="Setor Musical MS",
-    description="Microserviço para gerenciar entidades do setor musical.",
-    version="1.0.0",
-)
+from pydantic import BaseModel
+from typing import Optional, List
 
-# Inclui o roteador de autenticação na aplicação principal
-app.include_router(auth.router)
+class RepertorioItemBase(BaseModel):
 
-@app.get("/")
-def read_root():
-    return {"message": "Bem-vindo à API do Setor Musical"}
+# setormusicalms\backend\security\security.py
+from datetime import datetime, timedelta, timezone
+from jose import jwt
+from passlib.context import CryptContext
+import os
+
+Converte links do Google Drive para links de visualização direta ou download.
+"""
+import re
+
+def convert_google_drive_link(url: str, media_type: str = "view") -> str:
+    """
