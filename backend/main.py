@@ -5,8 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 # Importando os módulos de banco de dados e modelos
 from database.database import engine, Base
 import models.user
-import models.repertorio
-# A importação 'models.agenda' foi removida pois não era utilizada.
+# As importações dos outros modelos foram removidas pois não eram
+# utilizadas diretamente neste arquivo. A importação de 'models.user'
+# é mantida para garantir que o SQLAlchemy reconheça o modelo ao criar as tabelas.
 
 # Importando o roteador principal da aplicação
 from app.main_production import router as main_router
