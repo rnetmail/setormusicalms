@@ -24,9 +24,12 @@ jobs:
           script: |
             # Navega para o diretório do projeto
             cd ~/setormusical/setormusicalms
+
+            # CORREÇÃO 1: Adiciona o repositório como seguro para o Git
+            sudo git config --global --add safe.directory /home/setormusicalms/setormusical/setormusicalms
             
             # Puxa as últimas alterações do repositório
-            git pull origin main
+            sudo git pull origin main
             
             # Para, apaga os contêineres antigos e sobe os novos a partir das imagens reconstruídas
             sudo docker-compose down
@@ -39,7 +42,6 @@ jobs:
             # Executa o script de inicialização do banco (se necessário)
             # O '|| true' garante que o workflow não falhe se o admin já existir
             sudo docker-compose exec backend python init_admin.py || true
-            # sudo docker-compose exec backend python -m app.init_admin || true (anterior)
 
             # Mostra o status final dos contêineres
             echo "Deploy concluído! Status dos contêineres:"
