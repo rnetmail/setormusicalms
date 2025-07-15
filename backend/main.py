@@ -1,25 +1,28 @@
 # setormusicalms\backend\amain.py
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth
 from database.database import engine, Base
+import models.user
+import models.repertorio
+import models.agenda
+import models.recado
+from app.main_production import router as main_router
 
 # Cria todas as tabelas no banco de dados (se não existirem)
 Base.metadata.create_all(bind=engine)
 
-from pydantic import BaseModel
-from typing import Optional, List
+app = FastAPI(
+    title="Setor Musical MS API",
+    description="API para o sistema de gerenciamento do Setor Musical MS",
+    version="1.0.0"
+)
 
-class RepertorioItemBase(BaseModel):
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Em produção, restrinja a origens específicas
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# setormusicalms\backend\security\security.py
-from datetime import datetime, timedelta, timezone
-from jose import jwt
-from passlib.context import CryptContext
-import os
-
-Converte links do Google Drive para links de visualização direta ou download.
-"""
-import re
-
-def convert_google_drive_link(url: str, media_type: str = "view") -> str:
-    """
+app.include_router(main_router)
