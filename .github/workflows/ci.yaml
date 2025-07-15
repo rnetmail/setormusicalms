@@ -1,0 +1,42 @@
+# setormusicalms\.github\workflows\ci.yml
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+      
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ip-194-195-221-198.cloudezapp.io
+          username: setormusicalms
+          password: ${{ secrets.VPS_PASSWORD }} # Use secrets para a senha!
+          script: |
+            # Navega para o diretório do projeto
+            cd ~/setormusical/setormusicalms
+            
+            # Puxa as últimas alterações do repositório
+            git pull origin main
+            
+            # Força a reconstrução da imagem do backend para pegar novas dependências
+            docker-compose build --no-cache backend
+            
+            # Sobe os contêineres, recriando apenas o que mudou
+            docker-compose up -d --force-recreate
+            
+            # Executa o script de inicialização do banco (se necessário)
+            docker-compose exec backend python init_admin.py || true
+            
+            echo "Deploy concluído!"
+            docker-compose ps
