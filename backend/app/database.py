@@ -10,7 +10,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////app/data/setormusical.db")
 
 # Garante que o diretório de dados exista antes de tentar criar o arquivo do DB,
 # mas apenas se não estivermos usando um banco de dados em memória.
-if "sqlite:///" in DATABASE_URL and not ":memory:" in DATABASE_URL:
+if "sqlite:///" in DATABASE_URL and ":memory:" not in DATABASE_URL:
     db_path = DATABASE_URL.split(":///")[1]
     db_dir = os.path.dirname(db_path)
     if db_dir: # Só cria o diretório se ele for especificado
