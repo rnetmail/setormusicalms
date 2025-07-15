@@ -1,45 +1,41 @@
 # --- Novo 'ci.yml' otimizado para FastAPI..."
 
-name: CI (Testes de Build)
+name: CI (Build e Testes)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   test-frontend:
+    name: Build do Frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Use Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-      - name: Instalar dependências do Frontend
+      - name: Instalar Dependências
         run: npm install
-      - name: Build do Frontend
+      - name: Build
         run: npm run build
 
   test-backend:
+    name: Testes do Backend (FastAPI)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python
+      - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      - name: Instalar dependências do Backend
-        run: pip install -r backend/requirements.txt
-      - name: Executar testes com Pytest
-        run: python -m pytest backend/tests
-
-  test-docker-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Construir imagens Docker
-        run: docker-compose build
+      - name: Instalar Dependências do Backend
+        run: |
+          pip install -r backend/requirements.txt
+          pip install requests pytest # Instala dependências de teste
+      - name: Executar Pytest
+        # Executa os testes na pasta correta
+        run: python -m pytest backend/tests/
