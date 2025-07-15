@@ -1,6 +1,6 @@
 # setormusicalms/backend/schemas/repertorio.py
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 
 # Schema base com os campos que são comuns para criação e leitura.
 class RepertorioItemBase(BaseModel):
