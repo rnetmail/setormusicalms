@@ -1,5 +1,4 @@
 # setormusicalms/backend/init_simple.py
-from sqlalchemy.orm import Session
 from database.database import SessionLocal, engine, Base
 from models.user import User
 from security.security import get_password_hash
