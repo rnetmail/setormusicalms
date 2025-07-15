@@ -434,3 +434,87 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
+def get_all_repertorio(
+    db: Session = Depends(get_db)
+):
+    query = db.query(RepertorioItem).filter(RepertorioItem.active)
+    if type_filter:
+        query = query.filter(RepertorioItem.type == type_filter)
+    if year_filter:
+def get_repertorio_by_group_and_year(group_type: str, year: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(RepertorioItem).filter(
+        RepertorioItem.type == group_type,
+        RepertorioItem.active
+    )
+    if year:
+        query = query.filter(func.strftime("%Y", RepertorioItem.date) == year)
+
+
+def get_all_agenda(
+    db: Session = Depends(get_db)
+):
+    query = db.query(AgendaItem).filter(AgendaItem.active)
+    if group_filter:
+        query = query.filter(AgendaItem.group == group_filter)
+    return query.order_by(AgendaItem.date.desc()).all()
+):
+    return db.query(AgendaItem).filter(
+        AgendaItem.group == group_type,
+        AgendaItem.active
+    ).order_by(AgendaItem.date.desc()).all()
+
+
+def get_all_recados(
+    db: Session = Depends(get_db)
+):
+    query = db.query(RecadoItem).filter(RecadoItem.active)
+    if group_filter:
+        query = query.filter(RecadoItem.group == group_filter)
+    return query.order_by(RecadoItem.date.desc()).all()
+):
+    return db.query(RecadoItem).filter(
+        RecadoItem.group == group_type,
+        RecadoItem.active
+    ).order_by(RecadoItem.date.desc()).all()
+
+def get_all_repertorio(
+    db: Session = Depends(get_db)
+):
+    query = db.query(RepertorioItem).filter(RepertorioItem.active)
+    if type_filter:
+        query = query.filter(RepertorioItem.type == type_filter)
+    if year_filter:
+def get_repertorio_by_group_and_year(group_type: str, year: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(RepertorioItem).filter(
+        RepertorioItem.type == group_type,
+        RepertorioItem.active
+    )
+    if year:
+        query = query.filter(func.strftime("%Y", RepertorioItem.date) == year)
+def get_all_agenda(
+    db: Session = Depends(get_db)
+):
+    query = db.query(AgendaItem).filter(AgendaItem.active)
+    if group_filter:
+        query = query.filter(AgendaItem.group == group_filter)
+    return query.order_by(AgendaItem.date.desc()).all()
+):
+    return db.query(AgendaItem).filter(
+        AgendaItem.group == group_type,
+        AgendaItem.active
+    ).order_by(AgendaItem.date.desc()).all()
+
+
+def get_all_recados(
+    db: Session = Depends(get_db)
+):
+    query = db.query(RecadoItem).filter(RecadoItem.active)
+    if group_filter:
+        query = query.filter(RecadoItem.group == group_filter)
+    return query.order_by(RecadoItem.date.desc()).all()
+):
+    return db.query(RecadoItem).filter(
+        RecadoItem.group == group_type,
+        RecadoItem.active
+    ).order_by(RecadoItem.date.desc()).all()
+
