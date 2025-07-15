@@ -1,38 +1,48 @@
-#setormusicalms/backend/app/routers/users.py
-
-from typing import List
+# setormusicalms/backend/app/routers/users.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import List
+
+from app import crud
+from app import schemas
 from app.database import get_db
-from auth.security import get_current_superuser
-from crud.user import (
-    get_user, get_users, create_user, update_user, delete_user,
-)
 
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
-from typing import Optional
-from models.repertorio import RepertorioItem
-from schemas.repertorio import RepertorioItemCreate, RepertorioItemUpdate
+# Create a new router object. This helps in organizing endpoints.
+# It can be included in the main FastAPI app.
+router = APIRouter()
 
+@router.post("/", response_model=schemas.User, status_code=201)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """
+    Create a new user.
 
-    # Filtrar apenas ativos
-    if active_only:
-        query = query.filter(RepertorioItem.active)
-    
-    # Ordenar por ano e título
-    query = query.order_by(RepertorioItem.year.desc(), RepertorioItem.title)
-    return db.query(RepertorioItem).filter(
-        and_(
-            RepertorioItem.type == group_type,
-            RepertorioItem.active
-        )
-    ).order_by(RepertorioItem.year.desc(), RepertorioItem.title).all()
+    - Checks if a user with the same username already exists.
+    - If not, creates the user in the database.
+    - Returns the created user's data.
+    """
+    db_user = crud.user.get_user_by_username(db, username=user.username)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    return crud.user.create_user(db=db, user=user)
 
+@router.get("/", response_model=List[schemas.User])
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """
+    Retrieve a list of users.
 
-from models.user import User
-from schemas.user import UserCreate, UserUpdate
-from auth.security import get_password_hash, verify_password
+    - Supports pagination via `skip` and `limit` query parameters.
+    """
+    users = crud.user.get_users(db, skip=skip, limit=limit)
+    return users
 
-def get_user(db: Session, user_id: int):
-    return db.query(User).filter(User.id == user_id).first()
+@router.get("/{user_id}", response_model=schemas.User)
+def read_user(user_id: int, db: Session = Depends(get_db)):
+    """
+    Retrieve a single user by their ID.
+
+    - Raises a 404 error if the user is not found.
+    """
+    db_user = crud.user.get_user(db, user_id=user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
