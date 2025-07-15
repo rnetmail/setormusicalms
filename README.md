@@ -2,7 +2,7 @@
 
 Este é o repositório para o sistema de gerenciamento do Setor Musical MS. A aplicação foi desenvolvida utilizando uma arquitetura moderna e containerizada para facilitar o desenvolvimento e o deploy.
 
-## 🚀 Arquitetura
+## 🚀 Arquitetura 
 
 O projeto é composto por dois serviços principais, orquestrados com Docker Compose:
 
