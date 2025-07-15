@@ -1,3 +1,5 @@
+setormusicalms/backend/app/main.py
+
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from . import crud, models, schemas # Seus módulos de CRUD, Models e Schemas
