@@ -1,4 +1,4 @@
-# setormusicalms\requirements.txt
+# setormusicalms/backend/requirements.txt
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 sqlalchemy==2.0.30
@@ -7,5 +7,4 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 pytest==8.2.0
 httpx==0.27.0
- 
- 
+requests==2.32.3
