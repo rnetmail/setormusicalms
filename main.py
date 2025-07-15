@@ -2,9 +2,7 @@
 from fastapi import FastAPI
 from routers import auth
 from database.database import engine, Base
-import models.user # Importa o módulo para que o SQLAlchemy o reconheça
-
-models.user.Base = Base
+import models.user # Importa o módulo para que o SQLAlchemy o reconheça ao criar as tabelas
 
 # Cria todas as tabelas no banco de dados (se não existirem)
 Base.metadata.create_all(bind=engine)
