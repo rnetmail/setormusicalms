@@ -1,43 +1,36 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from . import crud, models, schemas # Seus módulos de CRUD, Models e Schemas
+from .database import engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
-from app.database import engine
-from models import user, repertorio, agenda, recado
-from app.routers import auth, users, repertorio as repertorio_router, agenda as agenda_router, recados
 
-# Create database tables
-user.Base.metadata.create_all(bind=engine)
-repertorio.Base.metadata.create_all(bind=engine)
-agenda.Base.metadata.create_all(bind=engine)
-recado.Base.metadata.create_all(bind=engine)
+app = FastAPI()
 
-app = FastAPI(
-    title="Setor Musical MS API",
-    description="API para gerenciamento do Setor Musical Mokiti Okada MS",
-    version="1.0.0"
-)
+# Cria as tabelas no banco de dados (apenas se não existirem)
+models.Base.metadata.create_all(bind=engine)
 
-# Configure CORS
+# Configuração de CORS mais segura
+origins = [
+    "http://localhost",
+    "http://localhost:3000", # Endereço do frontend em desenvolvimento
+    # "https://seu-dominio-de-producao.com", # Adicionar o domínio de produção aqui
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(auth.router, prefix="/api")
-app.include_router(users.router, prefix="/api")
-app.include_router(repertorio_router.router, prefix="/api")
-app.include_router(agenda_router.router, prefix="/api")
-app.include_router(recados.router, prefix="/api")
-
 @app.get("/")
 def read_root():
-    return {"message": "Setor Musical MS API is running"}
+    return {"message": "Bem-vindo à API do Setor Musical MS"}
 
-@app.get("/api/health")
-def health_check():
-    return {"status": "healthy", "message": "API is running properly"}
+# Exemplo de rota utilizando a injeção de dependência do banco de dados
+@app.get("/instrumentos/", response_model=list[schemas.Instrumento])
+def read_instrumentos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    instrumentos = crud.get_instrumentos(db, skip=skip, limit=limit)
+    return instrumentos
 
