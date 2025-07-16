@@ -1,40 +1,39 @@
 # setormusicalms/backend/app/main.py
+# Conteúdo Final para: backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from .database import engine
+from .models import user, repertorio, agenda, recado  # Importa da nova localização
+from .routers import auth, users, repertorio as repertorio_router, agenda as agenda_router, recados as recados_router
 
-# Importando os módulos de banco de dados e modelos
-from app.database import engine, Base
-# A importação 'import models' foi removida pois era redundante.
-# Os modelos são carregados e registrados com o SQLAlchemy através da
-# importação do 'main_router' abaixo.
-
-# Importando o roteador principal da aplicação
-from app.main_production import router as main_router
-
-# Este comando cria as tabelas no banco de dados com base nos seus modelos
-# SQLAlchemy, caso elas ainda não existam.
-Base.metadata.create_all(bind=engine)
+# Cria as tabelas da base de dados
+user.Base.metadata.create_all(bind=engine)
+repertorio.Base.metadata.create_all(bind=engine)
+agenda.Base.metadata.create_all(bind=engine)
+recado.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Setor Musical MS API",
-    description="API para o sistema do Setor Musical MS",
+    description="API para gerenciamento do Setor Musical Mokiti Okada MS",
     version="1.0.0"
 )
 
-# Configura o Cross-Origin Resource Sharing (CORS) para permitir
-# que o frontend acesse a API.
+# Configura o CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Para produção, restrinja a origens específicas.
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Inclui todas as rotas definidas no arquivo main_production.py na aplicação principal.
-app.include_router(main_router)
+# Inclui os routers com os prefixos corretos
+app.include_router(auth.router, prefix="/auth", tags=["Autenticação"])
+app.include_router(users.router, prefix="/users", tags=["Usuários"])
+app.include_router(repertorio_router.router, prefix="/repertorio", tags=["Repertório"])
+app.include_router(agenda_router.router, prefix="/agenda", tags=["Agenda"])
+app.include_router(recados_router.router, prefix="/recados", tags=["Recados"])
 
-@app.get("/")
+@app.get("/", tags=["Root"])
 def read_root():
-    """Endpoint raiz para verificar se a API está funcionando."""
-    return {"message": "API do Setor Musical MS está no ar."}
+    return {"status": "ok", "message": "Bem-vindo à API do Setor Musical MS"}
