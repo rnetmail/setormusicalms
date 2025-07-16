@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Informações do Admin para o script de inicialização
-    ADMIN_USER: setormusicalms
+    ADMIN_USER: "setormusicalms"
     ADMIN_PASSWORD: "Setor@MS25"
     ADMIN_EMAIL: "rnetmail@gmail.com"
 
