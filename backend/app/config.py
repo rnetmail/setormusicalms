@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # Informações do Admin para o script de inicialização
     ADMIN_USER: setormusicalms
     ADMIN_PASSWORD: "Setor@MS25"
-    ADMIN_EMAIL: rnetmail@gmail.com
+    ADMIN_EMAIL: "rnetmail@gmail.com"
 
     class Config:
         # Aponta para o ficheiro .env que contém as variáveis
