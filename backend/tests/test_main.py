@@ -2,8 +2,8 @@ import json
 import pytest
 from httpx import AsyncClient
 from tests.factories import UserFactory  # Importe a factory
-from sqlalchemy.orm import Session  # Importe Session
-from app.core.security import verify_password # Importe a função de verificação de senha
+from sqlalchemy.orm import Session
+from app.core.security import verify_password, get_password_hash  # Importe as funções de segurança
 
 from app.main import app
 
@@ -84,7 +84,7 @@ async def test_login_success(db_session: Session):
         user_data = UserFactory.create()  
         from app import models  # Importe seus modelos SQLAlchemy
         # Cria o usuario no banco de dados
-        user_data.hashed_password = "password_segura" # Adicione uma senha (hash)
+        user_data.hashed_password = get_password_hash("password_segura")  # Use a função de hash
         # Cria o usuário no banco de dados
         user = models.User(**user_data.__dict__)
         db_session.add(user)
@@ -99,6 +99,8 @@ async def test_login_success(db_session: Session):
         response_json = response.json()
         assert "access_token" in response_json
         assert "token_type" in response_json
+        # (Opcional) Valide o formato do token, se for um JWT
+        # assert response_json["token_type"] == "bearer"  # Ou outro tipo, se aplicável
 
 @pytest.mark.asyncio
 async def test_login_failure(db_session: Session):
@@ -116,15 +118,27 @@ async def test_login_failure(db_session: Session):
 
 @pytest.mark.asyncio
 async def test_authenticated_access(db_session: Session):
-    """
-    Testa o acesso a um endpoint autenticado com um token válido.
-    """
+    """Testa o acesso a um endpoint autenticado com um token válido."""
     async with AsyncClient(app=app, base_url="http://test") as client:
-        # Primeiro, faz o login para obter o token (reutiliza o teste de login com sucesso)
-        login_response = await test_login_success(db_session)
-        token = login_response.json()["access_token"] # Extrai o token
+        # Cria um usuário para o teste
+        user_data = UserFactory.create()
+        user_data.hashed_password = get_password_hash("password_segura")
+        from app import models
+        user = models.User(**user_data.__dict__)
+        db_session.add(user)
+        db_session.commit()
+
+        # Faz login para obter o token
+        login_data = {"username": user_data.username, "password": "password_segura"}
+        login_response = await client.post("/token", data=login_data)
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+
+        # Opcional: Validar o token (JWT, etc.) antes de usar
+
         # Envia uma requisição para um endpoint autenticado (substitua '/protected' pelo seu endpoint)
         response = await client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+
         # Verifica se o acesso foi bem-sucedido (código 200 OK ou outro código de sucesso)
         assert response.status_code == 200
         # (Opcional) Verifica se os dados do usuário autenticado são retornados corretamente
