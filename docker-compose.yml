@@ -2,26 +2,23 @@
 
 services:
   backend:
-    # Usa a imagem do registro em produção, com fallback para build local
-    image: ${IMAGE_NAME_BACKEND:-setormusicalms-backend-local}
     build: ./backend
+    container_name: setormusicalms_backend_sqlite
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
     ports:
       - "8000:8000"
-    volumes:
-      - sqlite_db:/app/data
-    env_file:
-      - .env
 
   frontend:
-    # Usa a imagem do registro em produção, com fallback para build local
-    image: ${IMAGE_NAME_FRONTEND:-setormusicalms-frontend-local}
-    build: ./frontend
+    build:
+      # CORREÇÃO: O contexto de build é a pasta atual ('.')
+      # onde o Dockerfile principal se encontra.
+      context: .
+      dockerfile: Dockerfile
+    container_name: setormusicalms_frontend_nginx
     ports:
-      - "3000:3000"
+      - "8001:80"
     depends_on:
       - backend
-
-volumes:
-  sqlite_db:
-
-
+    restart: unless-stopped
