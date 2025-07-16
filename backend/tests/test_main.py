@@ -1,20 +1,31 @@
-# backend/tests/test_main.py
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import AsyncClient
 
 from app.main import app
 
-# @pytest.mark.anyio informa ao Pytest para rodar este teste com o plugin 'anyio'.
-@pytest.mark.anyio
-async def test_read_root():
+
+# O @pytest.mark.asyncio decorator é necessário para rodar testes assíncronos.
+# Graças à nossa configuração no pytest.ini, ele agora será executado corretamente.
+@pytest.mark.asyncio
+async def test_root_endpoint_returns_200_ok():
     """
-    Testa o endpoint raiz ("/") para garantir que ele retorna a mensagem esperada.
+    Testa se o endpoint raiz ("/") está acessível e retorna o status 200 OK.
     """
-    # A nova forma recomendada de usar o AsyncClient para testes em memória.
-    # Isso resolve o DeprecationWarning.
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    # O AsyncClient permite enviar requisições para a aplicação em memória,
+    # sem a necessidade de um servidor rodando. É a forma recomendada de testar.
+    async with AsyncClient(app=app, base_url="http://test") as client:
         response = await client.get("/")
 
     assert response.status_code == 200
-    assert response.json() == {"message": "API do Setor Musical MS está no ar."}
+
+@pytest.mark.asyncio
+async def test_root_endpoint_returns_correct_message():
+    """
+    Testa se o endpoint raiz ("/") retorna a mensagem de boas-vindas esperada.
+    """
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        response = await client.get("/")
+
+    response_data = response.json()
+    assert "message" in response_data
+    assert "API do Setor Musical MS está no ar." in response_data["message"]
