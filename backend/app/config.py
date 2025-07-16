@@ -2,24 +2,25 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    """
-    Configurações da aplicação.
+    # Declaração das variáveis que serão lidas do ficheiro .env
 
-    Estes valores são carregados a partir de variáveis de ambiente ou de um
-    arquivo .env. É uma boa prática para gerenciar configurações de
-    forma segura e flexível.
-    """
-    API_V1_STR: str = "/api/v1"
+    # Configuração do Banco de Dados SQLite (não lido do .env, mas definido no código)
+    # Por isso, não precisamos declará-lo aqui.
 
-    # Exemplo de outras configurações que podem ser adicionadas:
-    # SECRET_KEY: str = "sua_chave_secreta_super_segura"
-    # ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    # DATABASE_URL: str = "sqlite:///./sql_app.db"
+    # Configurações de Segurança JWT
+    SECRET_KEY: Setor@MS25
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # Informações do Admin para o script de inicialização
+    ADMIN_USER: setormusicalms
+    ADMIN_PASSWORD: Setor@MS25
+    ADMIN_EMAIL: rnetmail@gmail.com
 
     class Config:
-        # Especifica que as configurações podem ser lidas de um arquivo .env
+        # Aponta para o ficheiro .env que contém as variáveis
         env_file = ".env"
         env_file_encoding = 'utf-8'
 
-# Instância única das configurações que será usada em toda a aplicação
+# Cria uma instância das configurações para ser usada em toda a aplicação
 settings = Settings()
