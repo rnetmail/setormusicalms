@@ -1,3 +1,5 @@
+// types.ts
+// Versão 17 17/07/2025 17:22
 
 export enum GroupType {
   Coral = 'Coral',
@@ -31,9 +33,11 @@ export interface RepertorioItem {
   title: string;
   arrangement: string;
   year: number;
-  audioUrl?: string;
-  videoUrl?: string;
-  sheetMusicUrl: string;
+  audio_url?: string;
+  video_url?: string;
+  // NOVO CAMPO: Adicionado para corresponder ao que a API agora fornece.
+  video_thumbnail_url?: string;
+  sheet_music_url: string;
   naipes?: Naipe[];
   grupos?: OrquestraGrupo[];
   active: boolean;
