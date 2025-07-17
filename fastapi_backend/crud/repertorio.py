@@ -1,10 +1,11 @@
 # fastapi_backend/crud/repertorio.py
-# Versão 21 17/07/2025 22:12
+# Versão 79 18/07/2025 09:35
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.models.repertorio import RepertorioItem
-from app.schemas.repertorio import RepertorioItemCreate, RepertorioItemUpdate
+# CORREÇÃO: As importações agora apontam para os pacotes corretos na raiz.
+from models.repertorio import RepertorioItem
+from schemas.repertorio import RepertorioItemCreate, RepertorioItemUpdate
 from utils.media_converter import process_media_urls
 
 def get_repertorio_item(db: Session, item_id: int) -> Optional[RepertorioItem]:
@@ -34,9 +35,9 @@ def get_repertorio_items(
 
 def create_repertorio_item(db: Session, item: RepertorioItemCreate) -> RepertorioItem:
     """Cria um novo item de repertório, processando as URLs de mídia antes de salvar."""
-    item_data = item.dict()
+    # Pydantic V2 usa .model_dump()
+    item_data = item.model_dump()
     
-    # Aplica a conversão de URLs de mídia
     processed_data = process_media_urls(item_data)
     
     db_item = RepertorioItem(**processed_data)
@@ -51,9 +52,8 @@ def update_repertorio_item(db: Session, item_id: int, item_update: RepertorioIte
     if not db_item:
         return None
     
-    update_data = item_update.dict(exclude_unset=True)
+    update_data = item_update.model_dump(exclude_unset=True)
     
-    # Se algum URL de mídia estiver sendo atualizado, processa-o
     processed_update_data = process_media_urls(update_data)
     
     for field, value in processed_update_data.items():
@@ -65,3 +65,8 @@ def update_repertorio_item(db: Session, item_id: int, item_update: RepertorioIte
 
 def delete_repertorio_item(db: Session, item_id: int) -> Optional[RepertorioItem]:
     """Remove um item de repertório do banco de dados."""
+    db_item = db.query(RepertorioItem).filter(RepertorioItem.id == item_id).first()
+    if db_item:
+        db.delete(db_item)
+        db.commit()
+    return db_item
