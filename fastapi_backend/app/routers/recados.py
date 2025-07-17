@@ -1,66 +1,47 @@
+# fastapi_backend/app/routers/recados.py
+# Versão 30 17/07/2025 22:28
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+
+from app import crud, models, schemas
 from app.database import get_db
 from auth.security import get_current_staff_user, get_current_active_user
-from crud.recado import (
-    get_recado_item, get_recado_items, create_recado_item,
-    update_recado_item, delete_recado_item
-)
-from schemas.recado import RecadoItem, RecadoItemCreate, RecadoItemUpdate
-from models.user import User
 
-router = APIRouter(prefix="/recados", tags=["recados"])
+router = APIRouter(prefix="/recados")
 
-@router.get("/", response_model=List[RecadoItem])
+@router.get("/", response_model=List[schemas.RecadoItem])
 def read_recado_items(
     skip: int = 0,
     limit: int = 100,
-    group_filter: Optional[str] = Query(None, description="Filter by group: Coral, Orquestra, or Setor"),
+    group_filter: Optional[str] = Query(None, description="Filtrar por grupo: Coral, Orquestra, ou Setor"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: models.User = Depends(get_current_active_user)
 ):
-    items = get_recado_items(db, skip=skip, limit=limit, group_filter=group_filter)
+    """Endpoint para listar os recados com filtros e paginação."""
+    items = crud.recado.get_recado_items(db, skip=skip, limit=limit, group_filter=group_filter)
     return items
 
-@router.post("/", response_model=RecadoItem)
+@router.post("/", response_model=schemas.RecadoItem, status_code=201)
 def create_recado_item_endpoint(
-    item: RecadoItemCreate,
+    item: schemas.RecadoItemCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_staff_user)
+    current_user: models.User = Depends(get_current_staff_user)
 ):
-    return create_recado_item(db=db, item=item)
+    """Endpoint para criar um novo recado."""
+    return crud.recado.create_recado_item(db=db, item=item)
 
-@router.get("/{item_id}", response_model=RecadoItem)
+@router.get("/{item_id}", response_model=schemas.RecadoItem)
 def read_recado_item(
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: models.User = Depends(get_current_active_user)
 ):
-    db_item = get_recado_item(db, item_id=item_id)
+    """Endpoint para obter um recado específico pelo ID."""
+    db_item = crud.recado.get_recado_item(db, item_id=item_id)
     if db_item is None:
-        raise HTTPException(status_code=404, detail="Recado item not found")
+        raise HTTPException(status_code=404, detail="Recado não encontrado.")
     return db_item
 
-@router.put("/{item_id}", response_model=RecadoItem)
-def update_recado_item_endpoint(
-    item_id: int,
-    item_update: RecadoItemUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_staff_user)
-):
-    db_item = update_recado_item(db, item_id=item_id, item_update=item_update)
-    if db_item is None:
-        raise HTTPException(status_code=404, detail="Recado item not found")
-    return db_item
-
-@router.delete("/{item_id}")
-def delete_recado_item_endpoint(
-    item_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_staff_user)
-):
-    db_item = delete_recado_item(db, item_id=item_id)
-    if db_item is None:
-        raise HTTPException(status_code=404, detail="Recado item not found")
-    return {"message": "Recado item deleted successfully"}
+@router.put("/{item_id}", response_model=schemas.RecadoItem)
+def update_recado_item
