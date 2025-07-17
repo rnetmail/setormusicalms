@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 35 17/07/2025 22:38
+# Versão 36 17/07/2025 22:42
 
 name: CI/CD - Build, Test, and Deploy
 
@@ -32,9 +32,10 @@ jobs:
           pip install -r fastapi_backend/requirements.txt
 
       - name: 4. Instalar navegadores para o Playwright
-        # CORREÇÃO: Adiciona o comando para instalar os binários do Playwright.
+        # CORREÇÃO: Removemos a flag '--with-deps' para evitar erros de
+        # instalação de pacotes de sistema no ambiente de CI.
         run: |
-          playwright install --with-deps
+          playwright install
 
       - name: 5. Rodar testes com Pytest
         run: pytest fastapi_backend/
