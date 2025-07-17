@@ -1,37 +1,41 @@
-# Dockerfile (na raiz do projeto)
+# Dockerfile
+# Versão 32 17/07/2025 22:31
 
-# --- Estágio de Build ---
-# Usa uma imagem Node.js para instalar as dependências e construir o projeto
-FROM node:18-alpine AS build
+# --- Estágio 1: Build da Aplicação React ---
+# Usamos uma imagem oficial do Node.js como base para o build.
+# O alias 'build-stage' nos permite referenciar este estágio depois.
+FROM node:18-alpine AS build-stage
 
+# Define o diretório de trabalho dentro do contentor.
 WORKDIR /app
 
-COPY package.json ./
-# Descomente a linha abaixo se tiver um package-lock.json
-# COPY package-lock.json ./
+# Copia os ficheiros de definição de pacotes.
+COPY package*.json ./
 
+# Instala as dependências do projeto.
 RUN npm install
 
+# Copia todo o resto do código da aplicação para o contentor.
 COPY . .
 
-# O comando 'npm run build' cria a pasta 'dist' com os ficheiros otimizados
+# Executa o comando de build para gerar os ficheiros estáticos de produção.
 RUN npm run build
 
-# --- Estágio de Produção ---
-# Usa uma imagem Nginx super leve para servir os ficheiros
+
+# --- Estágio 2: Configuração do Servidor Nginx ---
+# Usamos uma imagem oficial e leve do Nginx para servir os ficheiros.
 FROM nginx:stable-alpine
 
-# Copia os ficheiros construídos do estágio anterior para a pasta pública do Nginx
-COPY --from=build /app/dist /usr/share/nginx/html
+# Copia os ficheiros estáticos gerados no estágio anterior para a pasta
+# padrão do Nginx que serve conteúdo web.
+COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# Remove a configuração padrão do Nginx
-RUN rm /etc/nginx/conf.d/default.conf
+# Copia o seu ficheiro de configuração personalizado do Nginx para dentro
+# do contentor, substituindo a configuração padrão.
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copia o nosso ficheiro de configuração customizado para o Nginx (próximo passo)
-COPY nginx.conf /etc/nginx/conf.d
-
-# O Nginx dentro do contentor vai correr na porta 80
+# Expõe a porta 80 para permitir o acesso ao Nginx.
 EXPOSE 80
 
-# Comando para iniciar o Nginx
+# O comando padrão para iniciar o Nginx quando o contentor arrancar.
 CMD ["nginx", "-g", "daemon off;"]
