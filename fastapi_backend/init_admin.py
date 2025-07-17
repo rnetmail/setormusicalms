@@ -1,16 +1,18 @@
 # fastapi_backend/init_admin.py
-# Versão 31 17/07/2025 22:30
+# Versão 48 17/07/2025 23:40
 import sys
 import os
 
-# Adiciona o diretório raiz ao path para permitir importações relativas
+# Adiciona o diretório raiz ao path para garantir que as importações funcionem
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# A importação da 'app' está correta pois refere-se à pasta /app/app
 from app.database import SessionLocal, engine, Base
-from app.models.user import User
+# CORREÇÃO: Os modelos estão na pasta 'models', não 'app/models'
+from models.user import User
 from auth.security import get_password_hash
-# Importar todos os modelos para garantir que todas as tabelas sejam criadas
-from app.models import repertorio, agenda, recado
+# CORREÇÃO: Importa os outros modelos do caminho correto
+from models import repertorio, agenda, recado
 
 def create_database_and_tables():
     """Cria o ficheiro .db e todas as tabelas no banco de dados se não existirem."""
@@ -23,16 +25,11 @@ def create_admin_user():
     db = SessionLocal()
     try:
         admin_username = "admin"
-        admin_password = "Setor@MS25"  # Recomenda-se usar uma variável de ambiente para isso
+        admin_password = "Setor@MS25"
         
-        # Verifica se o usuário admin já existe
         admin_user = db.query(User).filter(User.username == admin_username).first()
         
-        if admin_user:
-            print(f"Usuário '{admin_username}' já existe. A verificar a senha...")
-            # Opcional: pode-se atualizar a senha se necessário
-            # admin_user.hashed_password = get_password_hash(admin_password)
-        else:
+        if not admin_user:
             print(f"A criar o usuário '{admin_username}'...")
             admin_user = User(
                 username=admin_username,
@@ -45,9 +42,10 @@ def create_admin_user():
                 is_superuser=True
             )
             db.add(admin_user)
+            db.commit()
             print("✅ Usuário admin criado!")
-        
-        db.commit()
+        else:
+            print(f"Usuário '{admin_username}' já existe.")
         
     except Exception as e:
         print(f"❌ Erro ao criar/verificar o usuário admin: {e}")
