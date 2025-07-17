@@ -1,5 +1,5 @@
 // pages/ContentPage.tsx
-// Versão 19 17/07/2025 17:28
+# Versão 20 17/07/2025 17:30
 import React, { useState, useEffect, useMemo } from 'react';
 import { getRepertorio, getAgenda, getRecados } from '../services/api';
 import { GroupType, RepertorioItem, AgendaItem, RecadoItem, Naipe, OrquestraGrupo } from '../types';
@@ -114,7 +114,7 @@ const ContentPage: React.FC<ContentPageProps> = ({ group, contentType }) => {
     const renderRepertorio = () => {
         const renderMusicDetails = (item: RepertorioItem) => {
             // Lógica simplificada: usa diretamente as URLs fornecidas pelo backend.
-            const isPdf = item.sheet_music_url && item.sheet_music_url.toLowerCase().endsWith('.pdf');
+            const isPdf = item.sheet_music_url && item.sheet_music_url.toLowerCase().includes('preview');
             return (
                  <div className="space-y-4">
                     {item.audio_url && (
@@ -134,16 +134,18 @@ const ContentPage: React.FC<ContentPageProps> = ({ group, contentType }) => {
                             </div>
                         </div>
                     )}
-                    <div>
-                        <h4 className="font-bold mb-2 text-gray-700">Partitura:</h4>
-                        {isPdf ? (
-                            <a href={item.sheet_music_url} target="_blank" rel="noopener noreferrer" className="inline-block bg-brand-gold text-brand-dark font-bold py-2 px-4 rounded-full hover:bg-yellow-500 transition-colors duration-300">
-                                Abrir Partitura (PDF)
-                            </a>
-                        ) : (
-                            <img src={item.sheet_music_url} alt={`Partitura de ${item.title}`} className="w-full h-auto rounded border" />
-                        )}
-                    </div>
+                    {item.sheet_music_url && (
+                        <div>
+                            <h4 className="font-bold mb-2 text-gray-700">Partitura:</h4>
+                            {isPdf ? (
+                                <a href={item.sheet_music_url} target="_blank" rel="noopener noreferrer" className="inline-block bg-brand-gold text-brand-dark font-bold py-2 px-4 rounded-full hover:bg-yellow-500 transition-colors duration-300">
+                                    Abrir Partitura (PDF)
+                                </a>
+                            ) : (
+                                <img src={item.sheet_music_url} alt={`Partitura de ${item.title}`} className="w-full h-auto rounded border" />
+                            )}
+                        </div>
+                    )}
                 </div>
             );
         };
