@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 62 18/07/2025 00:15
+# Versão 68 18/07/2025 08:21
 
 name: CI/CD - Testar, Construir e Implementar
 
@@ -24,35 +24,46 @@ jobs:
       - name: 2. Iniciar serviços com Docker Compose
         run: docker compose up -d --build
 
-      - name: 3. Aguardar e Inicializar o Banco de Dados
+      - name: 3. Aguardar e Verificar a Saúde da API
+        # AJUSTE: Loop robusto que verifica o endpoint de saúde antes de prosseguir.
         run: |
-          echo "A aguardar 30 segundos para os serviços iniciarem..."
-          sleep 30
-          echo "A inicializar o banco de dados e o usuário admin..."
-          docker compose exec backend python init_admin.py
-          echo "A verificar os contentores em execução..."
-          docker compose ps
+          echo "A aguardar que a API esteja pronta..."
+          timeout=60
+          while ! curl -sSf http://localhost:8001/api/health; do
+            timeout=$((timeout - 5))
+            if [ $timeout -le 0 ]; then
+              echo "A API não ficou pronta em 60 segundos."
+              docker compose logs backend
+              exit 1
+            fi
+            echo "API ainda não está pronta. A aguardar 5 segundos..."
+            sleep 5
+          done
+          echo "✅ API está pronta e a responder!"
 
-      - name: 4. Configurar ambiente Python
+      - name: 4. Inicializar o Banco de Dados
+        run: docker compose exec backend python init_admin.py
+
+      - name: 5. Mostrar Logs do Backend ANTES dos Testes
+        run: docker compose logs backend
+
+      - name: 6. Configurar Python e Instalar Dependências
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: 5. Instalar dependências Python e Playwright
-        run: |
-          python -m pip install --upgrade pip
+      - run: |
+          pip install --upgrade pip
           pip install -r fastapi_backend/requirements.txt
           playwright install
 
-      - name: 6. Executar testes com Pytest
+      - name: 7. Executar Testes com Pytest
         run: pytest fastapi_backend/
       
-      - name: 7. Exibir logs do backend em caso de falha
-        # CORREÇÃO: Este passo crucial mostra-nos o erro do servidor se os testes falharem.
+      - name: 8. Exibir Logs do Backend APÓS os Testes (em caso de falha)
         if: failure()
         run: docker compose logs backend
 
-      - name: 8. Parar os serviços após os testes
+      - name: 9. Parar os serviços após os testes
         if: always()
         run: docker compose down
 
