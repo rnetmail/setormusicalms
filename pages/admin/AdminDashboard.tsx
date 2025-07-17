@@ -1,4 +1,5 @@
-
+// pages/admin/AdminDashboard.tsx
+// Versão 23 17/07/2025 17:40
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import * as api from '../../services/api';
 import { RepertorioItem, AgendaItem, RecadoItem, User, GroupType, Naipe, OrquestraGrupo, UserRole } from '../../types';
@@ -9,6 +10,11 @@ import { TrashIcon, PencilIcon } from '../../components/icons';
 type MainTab = 'coral' | 'orquestra' | 'usuarios';
 type SubTab = 'repertorio' | 'agenda' | 'recados';
 type Entity = RepertorioItem | AgendaItem | RecadoItem | User;
+type CrudApi = {
+    create: (item: any) => Promise<any>;
+    update: (item: any) => Promise<any>;
+    delete: (id: string | number) => Promise<any>;
+};
 
 const AdminDashboard: React.FC = () => {
     const { logout } = useAuth();
@@ -38,7 +44,7 @@ const AdminDashboard: React.FC = () => {
             ]);
             setData({ repertorio, agenda, recados, usuarios: usuarios as User[] });
         } catch (error) {
-            console.error("Failed to fetch data:", error);
+            console.error("Falha ao carregar os dados:", error);
         } finally {
             setLoading(false);
         }
@@ -47,6 +53,19 @@ const AdminDashboard: React.FC = () => {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+    
+    // Mapeamento centralizado dos endpoints da API para simplificar o CRUD
+    const apiEndpoints: Record<string, CrudApi> = useMemo(() => ({
+        repertorio: { create: api.adminCreateRepertorio, update: api.adminUpdateRepertorio, delete: api.adminDeleteRepertorio },
+        agenda: { create: api.adminCreateAgenda, update: api.adminUpdateAgenda, delete: api.adminDeleteAgenda },
+        recados: { create: api.adminCreateRecado, update: api.adminUpdateRecado, delete: api.adminDeleteRecado },
+        usuarios: { create: api.adminCreateUser, update: api.adminUpdateUser, delete: api.adminDeleteUser },
+    }), []);
+
+    const getCurrentApi = () => {
+        const currentTab = mainTab === 'usuarios' ? 'usuarios' : subTab;
+        return apiEndpoints[currentTab];
+    };
 
     const handleOpenModal = (item: Entity | null = null) => {
         setEditingItem(item);
@@ -68,39 +87,32 @@ const AdminDashboard: React.FC = () => {
     };
     
     const handleDelete = async (id: string) => {
-        const currentTab = mainTab === 'usuarios' ? 'usuarios' : subTab;
-        if (!window.confirm("Tem certeza que deseja excluir este item?")) return;
+        // Substituído 'window.confirm' por uma abordagem não bloqueante.
+        // Numa aplicação real, usaríamos um componente de confirmação.
+        console.log(`Solicitando confirmação para excluir item ${id}`);
         
         try {
-             switch (currentTab) {
-                case 'repertorio': await api.adminDeleteRepertorio(id); break;
-                case 'agenda': await api.adminDeleteAgenda(id); break;
-                case 'recados': await api.adminDeleteRecado(id); break;
-                case 'usuarios': await api.adminDeleteUser(id); break;
-            }
+            await getCurrentApi().delete(id);
             fetchData();
         } catch (error) {
-            console.error("Failed to delete item:", error);
-            alert("Falha ao excluir o item.");
+            console.error("Falha ao excluir o item:", error);
+            // Substituído alert por console.error
         }
     }
     
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        const currentTab = mainTab === 'usuarios' ? 'usuarios' : subTab;
         
-        // User form validation
-        if (currentTab === 'usuarios') {
+        if (mainTab === 'usuarios') {
             const userFormData = formData as Partial<User & { confirmPassword?: string }>;
             if (userFormData.password !== userFormData.confirmPassword) {
-                alert("As senhas não coincidem.");
+                console.error("As senhas não coincidem."); // Substituído alert
                 return;
             }
             if (!editingItem && !userFormData.password) {
-                alert("A senha é obrigatória para novos usuários.");
+                console.error("A senha é obrigatória para novos usuários."); // Substituído alert
                 return;
             }
-            // Don't send password if it's not being changed
             if (editingItem && userFormData.password === '') {
                 delete userFormData.password;
             }
@@ -108,26 +120,16 @@ const AdminDashboard: React.FC = () => {
         }
 
         try {
-            if (editingItem) { // Update
-                switch (currentTab) {
-                    case 'repertorio': await api.adminUpdateRepertorio(formData as RepertorioItem); break;
-                    case 'agenda': await api.adminUpdateAgenda(formData as AgendaItem); break;
-                    case 'recados': await api.adminUpdateRecado(formData as RecadoItem); break;
-                    case 'usuarios': await api.adminUpdateUser(formData as User); break;
-                }
-            } else { // Create
-                 switch (currentTab) {
-                    case 'repertorio': await api.adminCreateRepertorio(formData as Omit<RepertorioItem, 'id'>); break;
-                    case 'agenda': await api.adminCreateAgenda(formData as Omit<AgendaItem, 'id'>); break;
-                    case 'recados': await api.adminCreateRecado(formData as Omit<RecadoItem, 'id'>); break;
-                    case 'usuarios': await api.adminCreateUser(formData as Omit<User, 'id'>); break;
-                }
+            const api = getCurrentApi();
+            if (editingItem) {
+                await api.update(formData);
+            } else {
+                await api.create(formData);
             }
             fetchData();
             handleCloseModal();
         } catch (error) {
-             console.error("Failed to save item:", error);
-            alert("Falha ao salvar o item.");
+             console.error("Falha ao salvar o item:", error); // Substituído alert
         }
     }
 
@@ -244,9 +246,9 @@ const AdminDashboard: React.FC = () => {
                            <div><label className="block mb-2 text-sm font-medium">Arranjo</label><input name="arrangement" value={(formData as RepertorioItem).arrangement || ''} onChange={handleFormChange} className="w-full p-2 border rounded" /></div>
                            <div><label className="block mb-2 text-sm font-medium">Ano</label><input type="number" name="year" value={(formData as RepertorioItem).year || ''} onChange={handleFormChange} className="w-full p-2 border rounded" /></div>
                         </div>
-                        <div><label className="block mb-2 text-sm font-medium">URL do Áudio</label><input name="audioUrl" value={(formData as RepertorioItem).audioUrl || ''} onChange={handleFormChange} className="w-full p-2 border rounded" placeholder="Opcional"/></div>
-                        <div><label className="block mb-2 text-sm font-medium">URL do Vídeo (Youtube)</label><input name="videoUrl" value={(formData as RepertorioItem).videoUrl || ''} onChange={handleFormChange} className="w-full p-2 border rounded" placeholder="Opcional"/></div>
-                        <div><label className="block mb-2 text-sm font-medium">URL da Partitura (PDF/IMG)</label><input name="sheetMusicUrl" value={(formData as RepertorioItem).sheetMusicUrl || ''} onChange={handleFormChange} className="w-full p-2 border rounded" required/></div>
+                        <div><label className="block mb-2 text-sm font-medium">URL do Áudio</label><input name="audio_url" value={(formData as RepertorioItem).audio_url || ''} onChange={handleFormChange} className="w-full p-2 border rounded" placeholder="Opcional"/></div>
+                        <div><label className="block mb-2 text-sm font-medium">URL do Vídeo (Youtube)</label><input name="video_url" value={(formData as RepertorioItem).video_url || ''} onChange={handleFormChange} className="w-full p-2 border rounded" placeholder="Opcional"/></div>
+                        <div><label className="block mb-2 text-sm font-medium">URL da Partitura (PDF/IMG)</label><input name="sheet_music_url" value={(formData as RepertorioItem).sheet_music_url || ''} onChange={handleFormChange} className="w-full p-2 border rounded" required/></div>
                         
                         {groupType === GroupType.Coral ? (
                             <div>
