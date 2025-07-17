@@ -1,37 +1,35 @@
 # fastapi_backend/auth/security.py
-# Versão 49 17/07/2025 23:42
+# Versão 05 17/07/2025 16:45
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-# CORREÇÃO: Importações diretas dos pacotes corretos
-import crud
-import models
-import schemas
+# Importações de módulos do nosso projeto
+import crud.user
+import models.user
+import schemas.user
 from app.config import settings
 from app.database import get_db
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# O `tokenUrl` deve apontar para o endpoint de login.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica se a senha em texto plano corresponde à senha hasheada."""
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password: str) -> str:
-    """Gera o hash de uma senha em texto plano."""
-    return pwd_context.hash(password)
-
-
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Cria um novo token de acesso JWT."""
+    """
+    Cria um novo token de acesso JWT.
+
+    Args:
+        data: O dicionário de dados a ser incluído no payload do token (geralmente o 'sub' com o username).
+        expires_delta: Duração opcional para a expiração do token.
+
+    Returns:
+        O token JWT codificado como uma string.
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -44,7 +42,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.user.User:
-    """Dependência que decodifica o token JWT e retorna o usuário do banco de dados."""
+    """
+    Dependência que decodifica o token JWT, valida e retorna o usuário do banco de dados.
+    Esta função é o pilar para proteger endpoints.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Não foi possível validar as credenciais",
@@ -59,7 +60,6 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except JWTError:
         raise credentials_exception
     
-    # CORREÇÃO: Usa o caminho completo para a função
     user = crud.user.get_user_by_username(db, username=token_data.username)
     if user is None:
         raise credentials_exception
