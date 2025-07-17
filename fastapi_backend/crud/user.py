@@ -1,10 +1,11 @@
 # fastapi_backend/crud/user.py
-# Versão 14 16/07/2025 21:55
+# Versão 72 18/07/2025 08:35
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
+# CORREÇÃO: As importações agora apontam para os pacotes corretos na raiz.
+from models.user import User
+from schemas.user import UserCreate, UserUpdate
 from auth.security import get_password_hash, verify_password
 
 def get_user(db: Session, user_id: int) -> Optional[User]:
@@ -45,7 +46,8 @@ def update_user(db: Session, user_id: int, user_update: UserUpdate) -> Optional[
     """Atualiza um usuário existente. Se uma nova senha for fornecida, ela será hasheada."""
     db_user = db.query(User).filter(User.id == user_id).first()
     if db_user:
-        update_data = user_update.dict(exclude_unset=True)
+        # Pydantic V2 usa .model_dump() em vez de .dict()
+        update_data = user_update.model_dump(exclude_unset=True)
         if "password" in update_data and update_data["password"]:
             update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
         
