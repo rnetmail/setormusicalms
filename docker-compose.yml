@@ -1,61 +1,42 @@
 # docker-compose.yml
-# Versão 04 16/07/2025 20:30
+# Versão 07 16/07/2025 21:00
 
 # version: '3.8'
 
 services:
-  # Serviço do Banco de Dados PostgreSQL
-  db:
-    image: postgres:14-alpine
-    container_name: setormusicalms_postgres_db
-    volumes:
-      # Este volume garante que os dados do banco de dados persistam
-      # mesmo que o contentor seja recriado.
-      - postgres_data:/var/lib/postgresql/data/
-    environment:
-      # As variáveis de ambiente devem ser geridas de forma segura,
-      # idealmente num ficheiro .env que não é enviado para o repositório.
-      - POSTGRES_DB=setormusicalms_db
-      - POSTGRES_USER=mestre
-      - POSTGRES_PASSWORD=Setor@MS25
-    restart: unless-stopped
-
   # Serviço do Backend FastAPI
   backend:
-    # CORREÇÃO: Aponta para a pasta 'fastapi_backend' que contém o código corrigido.
     build: ./fastapi_backend
-    container_name: setormusicalms_fastapi_backend
+    container_name: setormusicalms_fastapi_backend_sqlite
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
+      # Mapeia o código local para dentro do contentor para desenvolvimento
       - ./fastapi_backend:/app
+      # CORREÇÃO: Cria e mapeia um volume para persistir o banco de dados SQLite
+      - sqlite_data:/app/data
     ports:
-      # CORREÇÃO: Expõe a porta 8000 do contentor na porta 8001 do anfitrião (VPS),
-      # conforme a sua especificação.
+      # Expõe a porta 8000 do contentor na porta 8001 do anfitrião (VPS)
       - "8001:8000"
     environment:
-      - DATABASE_URL=postgresql://mestre:Setor@MS25@db:5432/setormusicalms_db
+      # CORREÇÃO: Aponta para o caminho do ficheiro SQLite dentro do contentor
+      - DATABASE_URL=sqlite:///data/setormusical.db
       - SECRET_KEY=sua-chave-secreta-super-forte-aqui
       - ALGORITHM=HS256
-    depends_on:
-      # Garante que o serviço do banco de dados inicie antes do backend.
-      - db
     restart: unless-stopped
 
   # Serviço do Frontend com Nginx como servidor web
   frontend:
     build:
-      # O contexto é a raiz do projeto, onde o Dockerfile do frontend deve estar.
       context: .
       dockerfile: Dockerfile
     container_name: setormusicalms_react_frontend
     ports:
-      # CORREÇÃO: Expõe a porta 80 do contentor na porta 80 do anfitrião (VPS)
-      # para servir o site publicamente.
+      # Expõe a porta 80 do contentor na porta 80 do anfitrião (VPS)
       - "80:80"
     depends_on:
       - backend
     restart: unless-stopped
 
-# Definição do volume para persistência do banco de dados
+# Definição do volume para persistência do banco de dados SQLite
 volumes:
-  postgres_data:
+  sqlite_data:
