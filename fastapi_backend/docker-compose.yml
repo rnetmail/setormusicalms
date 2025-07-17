@@ -1,10 +1,10 @@
-version: '3.8'
+# version: '3.8'
 
 services:
   fastapi-backend:
     build: .
     ports:
-      - "8001:8000"
+      - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://mestre:Setor@MS25@db:5432/setormusicalms_db
       - SECRET_KEY=sua-chave-secreta-super-forte-aqui-fastapi
