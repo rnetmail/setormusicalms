@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 46 17/07/2025 23:30
+# Versão 62 18/07/2025 00:15
 
 name: CI/CD - Testar, Construir e Implementar
 
@@ -26,10 +26,9 @@ jobs:
 
       - name: 3. Aguardar e Inicializar o Banco de Dados
         run: |
-          echo "A aguardar 20 segundos para os serviços iniciarem..."
-          sleep 20
+          echo "A aguardar 30 segundos para os serviços iniciarem..."
+          sleep 30
           echo "A inicializar o banco de dados e o usuário admin..."
-          # CORREÇÃO: Caminho correto para o script dentro do contentor.
           docker compose exec backend python init_admin.py
           echo "A verificar os contentores em execução..."
           docker compose ps
@@ -48,7 +47,12 @@ jobs:
       - name: 6. Executar testes com Pytest
         run: pytest fastapi_backend/
       
-      - name: 7. Parar os serviços após os testes
+      - name: 7. Exibir logs do backend em caso de falha
+        # CORREÇÃO: Este passo crucial mostra-nos o erro do servidor se os testes falharem.
+        if: failure()
+        run: docker compose logs backend
+
+      - name: 8. Parar os serviços após os testes
         if: always()
         run: docker compose down
 
@@ -104,4 +108,8 @@ jobs:
             docker compose pull
             echo ">> Reiniciando os serviços..."
             docker compose up -d
-            echo ">> Inicializando o banco de dados e o
+            echo ">> Inicializando o banco de dados e o admin..."
+            docker compose exec backend python init_admin.py
+            echo ">> Limpando imagens Docker antigas..."
+            docker image prune -af
+            echo ">> ✅ Deploy finalizado com sucesso!"
