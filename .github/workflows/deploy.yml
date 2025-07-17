@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 36 17/07/2025 22:42
+# Versão 39 17/07/2025 22:55
 
 name: CI/CD - Build, Test, and Deploy
 
@@ -15,56 +15,59 @@ env:
   PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
 
 jobs:
-  lint_and_test:
+  # O nome do job foi atualizado para refletir que ele agora faz mais do que apenas lint/test.
+  test_and_build:
     runs-on: ubuntu-latest
     steps:
       - name: 1. Checkout do código
         uses: actions/checkout@v4
 
-      - name: 2. Configurar Python
+      - name: 2. Iniciar os serviços com Docker Compose
+        # CORREÇÃO: Inicia a aplicação em background para que os testes possam se conectar a ela.
+        run: docker-compose up -d --build
+
+      - name: 3. Aguardar os serviços estarem prontos
+        # Adiciona uma espera para garantir que o backend tenha tempo de iniciar.
+        run: |
+          echo "A aguardar 20 segundos para os serviços iniciarem..."
+          sleep 20
+          docker-compose ps # Mostra o status dos contentores para depuração
+
+      - name: 4. Configurar Python para o executor de testes
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 3. Instalar dependências do backend
+      - name: 5. Instalar dependências de teste
         run: |
           python -m pip install --upgrade pip
           pip install -r fastapi_backend/requirements.txt
-
-      - name: 4. Instalar navegadores para o Playwright
-        # CORREÇÃO: Removemos a flag '--with-deps' para evitar erros de
-        # instalação de pacotes de sistema no ambiente de CI.
-        run: |
           playwright install
 
-      - name: 5. Rodar testes com Pytest
+      - name: 6. Rodar testes com Pytest
+        # Agora os testes irão se conectar à aplicação que está rodando no Docker.
         run: pytest fastapi_backend/
+      
+      - name: 7. Parar os serviços após os testes
+        # Garante que o ambiente fique limpo, executando sempre, mesmo se os testes falharem.
+        if: always()
+        run: docker-compose down
 
-  build_and_push:
-    needs: lint_and_test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: 1. Checkout do código
-        uses: actions/checkout@v4
-
-      - name: 2. Login no GitHub Container Registry (ghcr.io)
+      - name: 8. Login no GitHub Container Registry (ghcr.io)
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 3. Build e Push da imagem do Backend
+      - name: 9. Build e Push da imagem do Backend
         uses: docker/build-push-action@v5
         with:
           context: ./fastapi_backend
           push: true
           tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
 
-      - name: 4. Build e Push da imagem do Frontend
+      - name: 10. Build e Push da imagem do Frontend
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -73,7 +76,8 @@ jobs:
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
   deploy:
-    needs: build_and_push
+    # O deploy agora depende do sucesso do job test_and_build.
+    needs: test_and_build
     runs-on: ubuntu-latest
     steps:
       - name: Deploy na VPS via SSH
@@ -87,13 +91,4 @@ jobs:
             echo ">> A aceder ao diretório do projeto..."
             cd ${{ env.PROJECT_PATH_ON_VPS }}
             echo ">> A fazer login no GitHub Container Registry na VPS..."
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-            echo ">> A puxar as imagens mais recentes..."
-            docker-compose pull
-            echo ">> A reiniciar os serviços com as novas imagens..."
-            docker-compose up -d
-            echo ">> A garantir que a base de dados e o admin estão inicializados..."
-            docker-compose exec backend python fastapi_backend/init_admin.py
-            echo ">> A limpar imagens Docker antigas para economizar espaço..."
-            docker image prune -af
-            echo ">> ✅ Deploy finalizado com sucesso!"
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.
