@@ -1,10 +1,9 @@
 # fastapi_backend/app/routers/repertorio.py
-# Versão 55 18/07/2025 00:02
+# Versão 64 18/07/2025 00:22
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-# CORREÇÃO: Importações diretas dos pacotes a partir da raiz do projeto
 import crud
 import models
 import schemas
@@ -42,4 +41,34 @@ def read_repertorio_item(
 ):
     """Endpoint para obter um item de repertório específico pelo ID."""
     db_item = crud.repertorio.get_repertorio_item(db, item_id=item_id)
-    if db_
+    # CORREÇÃO: A linha estava incompleta.
+    if db_item is None:
+        raise HTTPException(status_code=404, detail="Item de repertório não encontrado.")
+    return db_item
+
+@router.put("/{item_id}", response_model=schemas.repertorio.RepertorioItem)
+def update_repertorio_item_endpoint(
+    item_id: int,
+    item_update: schemas.repertorio.RepertorioItemUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.user.User = Depends(get_current_staff_user)
+):
+    """Endpoint para atualizar um item de repertório."""
+    db_item = crud.repertorio.update_repertorio_item(db, item_id=item_id, item_update=item_update)
+    # CORREÇÃO: A linha estava incompleta.
+    if db_item is None:
+        raise HTTPException(status_code=404, detail="Item de repertório não encontrado.")
+    return db_item
+
+@router.delete("/{item_id}", status_code=204)
+def delete_repertorio_item_endpoint(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.user.User = Depends(get_current_staff_user)
+):
+    """Endpoint para apagar um item de repertório."""
+    db_item = crud.repertorio.delete_repertorio_item(db, item_id=item_id)
+    # CORREÇÃO: A linha estava incompleta.
+    if db_item is None:
+        raise HTTPException(status_code=404, detail="Item de repertório não encontrado.")
+    return
