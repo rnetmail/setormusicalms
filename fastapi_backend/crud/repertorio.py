@@ -1,5 +1,5 @@
 # fastapi_backend/crud/repertorio.py
-# Versão 79 18/07/2025 09:35
+# Versão 75 18/07/2025 08:47
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -35,7 +35,6 @@ def get_repertorio_items(
 
 def create_repertorio_item(db: Session, item: RepertorioItemCreate) -> RepertorioItem:
     """Cria um novo item de repertório, processando as URLs de mídia antes de salvar."""
-    # Pydantic V2 usa .model_dump()
     item_data = item.model_dump()
     
     processed_data = process_media_urls(item_data)
