@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 45 17/07/2025 23:25
+# Versão 46 17/07/2025 23:30
 
 name: CI/CD - Testar, Construir e Implementar
 
@@ -25,12 +25,12 @@ jobs:
         run: docker compose up -d --build
 
       - name: 3. Aguardar e Inicializar o Banco de Dados
-        # CORREÇÃO: Adicionamos o init_admin.py aqui.
         run: |
           echo "A aguardar 20 segundos para os serviços iniciarem..."
           sleep 20
           echo "A inicializar o banco de dados e o usuário admin..."
-          docker compose exec backend python fastapi_backend/init_admin.py
+          # CORREÇÃO: Caminho correto para o script dentro do contentor.
+          docker compose exec backend python init_admin.py
           echo "A verificar os contentores em execução..."
           docker compose ps
 
@@ -104,8 +104,4 @@ jobs:
             docker compose pull
             echo ">> Reiniciando os serviços..."
             docker compose up -d
-            echo ">> Inicializando o banco de dados e o admin..."
-            docker compose exec backend python fastapi_backend/init_admin.py
-            echo ">> Limpando imagens Docker antigas..."
-            docker image prune -af
-            echo ">> ✅ Deploy finalizado com sucesso!"
+            echo ">> Inicializando o banco de dados e o
