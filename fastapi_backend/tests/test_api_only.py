@@ -1,21 +1,18 @@
 # fastapi_backend/tests/test_api_only.py
-# Versão 37 17/07/2025 22:45
+# Versão 82 18/07/2025 09:45
 import requests
 import pytest
 from datetime import datetime, date
 
-# As configurações foram movidas para o topo para fácil acesso.
-API_URL = "http://localhost:8001/api"
+# CORREÇÃO: A URL da API agora aponta para a porta 8000.
+API_URL = "http://localhost:8000/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "Setor@MS25"
 
-# Usamos o decorador de fixture do pytest para criar um "escopo" para a classe de teste.
-# 'class' significa que o código dentro do setup será executado uma vez antes de todos os testes na classe.
 @pytest.mark.usefixtures("auth_token")
 class TestApiOnly:
     """
     Agrupa todos os testes que dependem de um token de autenticação.
-    O pytest irá instanciar esta classe e executar cada método 'test_'.
     """
 
     @pytest.fixture(scope="class")
@@ -28,7 +25,7 @@ class TestApiOnly:
         login_data = {"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD}
         try:
             response = requests.post(f"{API_URL}/auth/login", data=login_data, timeout=10)
-            response.raise_for_status()  # Lança um erro para status HTTP 4xx/5xx
+            response.raise_for_status()
             token = response.json().get("access_token")
             assert token, "Token de acesso não foi recebido no login."
             request.cls.token = token
@@ -50,7 +47,6 @@ class TestApiOnly:
         headers = {"Authorization": f"Bearer {self.token}"}
         response = requests.get(f"{API_URL}/repertorio/", headers=headers, timeout=10)
         assert response.status_code == 200
-        # Verifica se a resposta é uma lista (JSON array)
         assert isinstance(response.json(), list)
         print(f"✅ Listagem de repertório passou. {len(response.json())} itens encontrados.")
 
