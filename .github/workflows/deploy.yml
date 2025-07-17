@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 68 18/07/2025 08:21
+# Versão 83 18/07/2025 09:48
 
 name: CI/CD - Testar, Construir e Implementar
 
@@ -25,11 +25,11 @@ jobs:
         run: docker compose up -d --build
 
       - name: 3. Aguardar e Verificar a Saúde da API
-        # AJUSTE: Loop robusto que verifica o endpoint de saúde antes de prosseguir.
         run: |
           echo "A aguardar que a API esteja pronta..."
           timeout=60
-          while ! curl -sSf http://localhost:8001/api/health; do
+          # CORREÇÃO: Verifica a porta correta do backend (8000).
+          while ! curl -sSf http://localhost:8000/api/health; do
             timeout=$((timeout - 5))
             if [ $timeout -le 0 ]; then
               echo "A API não ficou pronta em 60 segundos."
@@ -40,30 +40,27 @@ jobs:
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
+          docker compose exec backend python init_admin.py
 
-      - name: 4. Inicializar o Banco de Dados
-        run: docker compose exec backend python init_admin.py
-
-      - name: 5. Mostrar Logs do Backend ANTES dos Testes
-        run: docker compose logs backend
-
-      - name: 6. Configurar Python e Instalar Dependências
+      - name: 4. Configurar ambiente Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: |
-          pip install --upgrade pip
+
+      - name: 5. Instalar dependências Python e Playwright
+        run: |
+          python -m pip install --upgrade pip
           pip install -r fastapi_backend/requirements.txt
           playwright install
 
-      - name: 7. Executar Testes com Pytest
+      - name: 6. Executar testes com Pytest
         run: pytest fastapi_backend/
       
-      - name: 8. Exibir Logs do Backend APÓS os Testes (em caso de falha)
+      - name: 7. Exibir logs do backend em caso de falha
         if: failure()
         run: docker compose logs backend
 
-      - name: 9. Parar os serviços após os testes
+      - name: 8. Parar os serviços após os testes
         if: always()
         run: docker compose down
 
