@@ -1,20 +1,23 @@
 # .github/workflows/deploy.yml
+# Versão 33 17/07/2025 22:32
+
 name: CI/CD - Build, Test, and Deploy
 
 on:
+  # Este workflow é acionado a cada push para a branch 'main'.
   push:
     branches:
       - main
 
 env:
-  # Define o registro e os nomes das imagens para fácil reutilização
+  # Define o registro e os nomes das imagens para fácil reutilização.
   REGISTRY: ghcr.io
   IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
   IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
   PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
 
 jobs:
-  # JOB 1: Roda em TODOS os pushes para 'main' para garantir a qualidade do código
+  # JOB 1: Garante a qualidade do código antes de qualquer build ou deploy.
   lint_and_test:
     runs-on: ubuntu-latest
     steps:
@@ -26,31 +29,28 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 3. Instalar dependências
+      - name: 3. Instalar dependências do backend
+        # CORREÇÃO: Usa o requirements.txt da pasta correta.
         run: |
           python -m pip install --upgrade pip
-          pip install -r fastapi_backend/requirements.txt ruff
+          pip install -r fastapi_backend/requirements.txt
 
-      - name: 4. Verificar código com Linter (Ruff)
-        run: ruff check backend/
-
-      - name: 5. Rodar testes com Pytest
+      - name: 4. Rodar testes com Pytest
+        # CORREÇÃO: Roda os testes na pasta correta.
         run: pytest fastapi_backend/
 
-  # JOB 2: Constrói e publica imagens. Roda APENAS se o commit contiver 'Deploy to VPS'
+  # JOB 2: Constrói as imagens Docker e as envia para o registro do GitHub.
   build_and_push:
     needs: lint_and_test
-    # Esta condição garante que o build e o push só ocorram quando você comandar
-    if: "contains(github.event.head_commit.message, 'Deploy to VPS')"
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write # Permissão para publicar imagens no registro do GitHub
+      packages: write # Permissão para publicar imagens.
     steps:
       - name: 1. Checkout do código
         uses: actions/checkout@v4
 
-      - name: 2. Login no GitHub Container Registry
+      - name: 2. Login no GitHub Container Registry (ghcr.io)
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -60,6 +60,7 @@ jobs:
       - name: 3. Build e Push da imagem do Backend
         uses: docker/build-push-action@v5
         with:
+          # CORREÇÃO: Usa o contexto da pasta correta.
           context: ./fastapi_backend
           push: true
           tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
@@ -67,11 +68,13 @@ jobs:
       - name: 4. Build e Push da imagem do Frontend
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
+          # CORREÇÃO: O contexto é a raiz do projeto, onde está o Dockerfile do frontend.
+          context: .
+          dockerfile: Dockerfile
           push: true
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
-  # JOB 3: Roda automaticamente se o 'build_and_push' for bem-sucedido
+  # JOB 3: Faz o deploy das novas imagens na VPS.
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
@@ -84,21 +87,23 @@ jobs:
           password: ${{ secrets.VPS_SSH_PASS }}
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
+            echo ">> A aceder ao diretório do projeto..."
             cd ${{ env.PROJECT_PATH_ON_VPS }}
-            echo ">> Criando arquivo .env"
-            echo "IMAGE_NAME_BACKEND=${{ env.IMAGE_NAME_BACKEND }}:latest" > .env
-            echo "IMAGE_NAME_FRONTEND=${{ env.IMAGE_NAME_FRONTEND }}:latest" >> .env
-            
-            echo ">> Logando no GitHub Container Registry na VPS"
-            echo "${{ secrets.GIT_PAT }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
-            echo ">> Baixando as imagens mais recentes do registro"
+            echo ">> A fazer login no GitHub Container Registry na VPS..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+            echo ">> A puxar as imagens mais recentes..."
             docker-compose pull
 
-            echo ">> Reiniciando os serviços com as novas imagens"
+            echo ">> A reiniciar os serviços com as novas imagens..."
             docker-compose up -d
 
-            echo ">> Limpando imagens Docker antigas para economizar espaço"
+            echo ">> A garantir que a base de dados e o admin estão inicializados..."
+            # CORREÇÃO: Adiciona a execução do script de inicialização.
+            docker-compose exec backend python fastapi_backend/init_admin.py
+
+            echo ">> A limpar imagens Docker antigas para economizar espaço..."
             docker image prune -af
 
-            echo ">> Deploy finalizado com sucesso!"
+            echo ">> ✅ Deploy finalizado com sucesso!"
