@@ -1,19 +1,21 @@
 # fastapi_backend/schemas/repertorio.py
-# Versão 19 16/07/2025 22:15
-from pydantic import BaseModel
+# Versão 15 17/07/2025 17:18
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 class RepertorioItemBase(BaseModel):
     """Schema base com os campos comuns de um item de repertório."""
-    type: str  # Ex: 'Coral', 'Orquestra'
+    type: str
     title: str
     arrangement: Optional[str] = None
     year: int
     audio_url: Optional[str] = None
     video_url: Optional[str] = None
+    # O campo da thumbnail é opcional e será preenchido pelo backend.
+    video_thumbnail_url: Optional[str] = None
     sheet_music_url: str
-    naipes: Optional[List[str]] = []
-    grupos: Optional[List[str]] = []
+    naipes: Optional[List[str]] = Field(default_factory=list)
+    grupos: Optional[List[str]] = Field(default_factory=list)
     active: bool = True
 
 class RepertorioItemCreate(RepertorioItemBase):
@@ -31,13 +33,14 @@ class RepertorioItemUpdate(BaseModel):
     year: Optional[int] = None
     audio_url: Optional[str] = None
     video_url: Optional[str] = None
+    video_thumbnail_url: Optional[str] = None # Permitir atualização, embora seja gerenciado pelo backend.
     sheet_music_url: Optional[str] = None
     naipes: Optional[List[str]] = None
     grupos: Optional[List[str]] = None
     active: Optional[bool] = None
 
 class RepertorioItem(RepertorioItemBase):
-    """Schema usado para retornar os dados de um item de repertório da API."""
+    """Schema usado para retornar os dados de um item de repertório da API, incluindo o ID."""
     id: int
 
     class Config:
