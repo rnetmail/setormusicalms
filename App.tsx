@@ -1,6 +1,8 @@
-
+// App.tsx
+// Versão 21 17/07/2025 17:32
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+// ATUALIZAÇÃO: Importa BrowserRouter em vez de HashRouter.
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GroupType } from './types';
 import Layout from './components/Layout';
@@ -21,7 +23,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const App: React.FC = () => {
     return (
-        <HashRouter>
+        // ATUALIZAÇÃO: Utiliza BrowserRouter para URLs limpas (ex: /coral/repertorio).
+        <BrowserRouter>
             <AuthProvider>
                 <Routes>
                     {/* Public Routes */}
@@ -47,7 +50,7 @@ const App: React.FC = () => {
                     } />
                 </Routes>
             </AuthProvider>
-        </HashRouter>
+        </BrowserRouter>
     );
 };
 
