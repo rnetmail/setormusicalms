@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     
     # --- Configuração de CORS ---
     # CORREÇÃO: Adicionamos a variável CORS_ORIGINS de volta.
-    CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: List[str] = ["https://setormusicalms.art.br", "http://setormusicalms.art.br"]
 
     class Config:
         # Pede ao Pydantic para ler as variáveis de um ficheiro .env, se existir.
