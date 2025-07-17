@@ -1,7 +1,30 @@
+# fastapi_backend/schemas/repertorio.py
+# Versão 19 16/07/2025 22:15
+from pydantic import BaseModel
+from typing import Optional, List
+
+class RepertorioItemBase(BaseModel):
+    """Schema base com os campos comuns de um item de repertório."""
+    type: str  # Ex: 'Coral', 'Orquestra'
+    title: str
+    arrangement: Optional[str] = None
+    year: int
+    audio_url: Optional[str] = None
+    video_url: Optional[str] = None
+    sheet_music_url: str
+    naipes: Optional[List[str]] = []
+    grupos: Optional[List[str]] = []
+    active: bool = True
+
 class RepertorioItemCreate(RepertorioItemBase):
+    """Schema usado para criar um novo item de repertório. Herda de Base."""
     pass
 
 class RepertorioItemUpdate(BaseModel):
+    """
+    Schema usado para atualizar um item de repertório.
+    Todos os campos são opcionais para permitir atualizações parciais.
+    """
     type: Optional[str] = None
     title: Optional[str] = None
     arrangement: Optional[str] = None
@@ -14,7 +37,10 @@ class RepertorioItemUpdate(BaseModel):
     active: Optional[bool] = None
 
 class RepertorioItem(RepertorioItemBase):
+    """Schema usado para retornar os dados de um item de repertório da API."""
     id: int
 
     class Config:
+        # Permite que o Pydantic mapeie os dados diretamente de um
+        # modelo SQLAlchemy para este schema.
         from_attributes = True
