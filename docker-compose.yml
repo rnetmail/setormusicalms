@@ -1,25 +1,25 @@
 # docker-compose.yml
-# Versão 67 18/07/2025 08:15
+# Versão 70 18/07/2025 08:26
 
-# version: '3.8'
+version: '3.8'
 
 services:
   # Serviço do Backend FastAPI
   backend:
     build: ./fastapi_backend
     container_name: setormusicalms_fastapi_backend_sqlite
-    # CORREÇÃO: Comando de arranque estável, sem '--reload'.
+    # CORREÇÃO: Removemos a flag '--reload' para maior estabilidade no ambiente de CI.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       # Mapeia o código local para dentro do contentor
       - ./fastapi_backend:/app
-      # CORREÇÃO: Volume para persistir o banco de dados SQLite
+      # Volume para persistir o banco de dados SQLite
       - sqlite_data:/app/data
     ports:
       # Expõe a porta 8000 do contentor na porta 8001 do anfitrião (VPS).
       - "8001:8000"
     environment:
-      # CORREÇÃO: Aponta para o caminho do ficheiro SQLite dentro do contentor.
+      # Aponta para o caminho do ficheiro SQLite dentro do contentor.
       - DATABASE_URL=sqlite:///data/setormusical.db
       - SECRET_KEY=sua-chave-secreta-super-forte-aqui
       - ALGORITHM=HS256
