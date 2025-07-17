@@ -1,5 +1,5 @@
 # fastapi_backend/tests/test_crud_playwright.py
-# Versão 71 18/07/2025 08:30
+# Versão 73 18/07/2025 08:38
 import pytest
 from playwright.async_api import async_playwright, Page, Browser
 from datetime import datetime
@@ -12,13 +12,10 @@ ADMIN_PASSWORD = "Setor@MS25"
 class TestCrudPlaywright:
     @pytest.fixture(scope="class", autouse=True)
     async def browser_context_setup(self, playwright: async_playwright):
-        """Inicializa o browser uma vez para todos os testes da classe."""
         self.browser = await playwright.chromium.launch(headless=True, slow_mo=50)
         yield
         await self.browser.close()
 
-    # A fixture de página foi removida para usar um contexto por teste.
-    
     async def admin_login(self, page: Page):
         """Função auxiliar para realizar o login."""
         await page.goto(f"{BASE_URL}/#/gestao/login", timeout=30000)
@@ -30,33 +27,36 @@ class TestCrudPlaywright:
 
     async def test_admin_login_flow(self):
         """Testa o fluxo de login no painel de gestão."""
-        # CORREÇÃO: Cada teste agora cria o seu próprio contexto de página.
         page = await self.browser.new_page()
-        await self.admin_login(page)
-        await page.close()
+        try:
+            await self.admin_login(page)
+        finally:
+            await page.close()
 
     async def test_create_and_delete_repertorio_item(self):
         """Testa a criação e remoção de um item de repertório."""
         page = await self.browser.new_page()
-        await self.admin_login(page)
-        
-        await page.click("button:has-text('Coral')")
-        await page.click("button:has-text('Adicionar Novo')")
+        try:
+            await self.admin_login(page)
+            
+            await page.click("button:has-text('Coral')")
+            await page.click("button:has-text('Adicionar Novo')")
 
-        item_title = f"Teste Playwright {datetime.now().strftime('%H%M%S')}"
-        await page.wait_for_selector('input[name="title"]')
-        await page.fill('input[name="title"]', item_title)
-        await page.fill('input[name="year"]', "2025")
-        await page.fill('input[name="sheetMusicUrl"]', "http://exemplo.com/partitura.pdf")
-        
-        await page.click("button:has-text('Salvar')")
-        await page.wait_for_selector(f"text={item_title}", timeout=5000)
+            item_title = f"Teste Playwright {datetime.now().strftime('%H%M%S')}"
+            await page.wait_for_selector('input[name="title"]')
+            await page.fill('input[name="title"]', item_title)
+            await page.fill('input[name="year"]', "2025")
+            await page.fill('input[name="sheetMusicUrl"]', "http://exemplo.com/partitura.pdf")
+            
+            await page.click("button:has-text('Salvar')")
+            await page.wait_for_selector(f"text={item_title}", timeout=5000)
 
-        item_row = page.locator("tr", has_text=item_title)
-        page.on("dialog", lambda dialog: dialog.accept())
-        
-        await item_row.locator('button:has([d*="M9 2a1"])').click()
-        
-        await page.wait_for_timeout(2000)
-        assert not await page.locator(f"text={item_title}").is_visible()
-        await page.close()
+            item_row = page.locator("tr", has_text=item_title)
+            page.on("dialog", lambda dialog: dialog.accept())
+            
+            await item_row.locator('button[aria-label="delete-item"]').click()
+            
+            await page.wait_for_timeout(2000)
+            assert not await page.locator(f"text={item_title}").is_visible()
+        finally:
+            await page.close()
