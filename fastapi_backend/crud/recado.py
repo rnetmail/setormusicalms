@@ -1,14 +1,22 @@
 # fastapi_backend/crud/recado.py
-# Versão 77 18/07/2025 08:49
+# Versão 11 17/07/2025 17:10
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-# CORREÇÃO: As importações agora apontam para os pacotes corretos na raiz.
 from models.recado import RecadoItem
 from schemas.recado import RecadoItemCreate, RecadoItemUpdate
 
 def get_recado_item(db: Session, item_id: int) -> Optional[RecadoItem]:
-    """Busca um recado específico pelo ID."""
+    """
+    Busca um recado específico pelo seu ID.
+
+    Args:
+        db: A sessão do banco de dados.
+        item_id: O ID do recado a ser buscado.
+
+    Returns:
+        O objeto RecadoItem se encontrado, caso contrário None.
+    """
     return db.query(RecadoItem).filter(RecadoItem.id == item_id).first()
 
 def get_recado_items(
@@ -19,8 +27,17 @@ def get_recado_items(
     active_only: bool = True
 ) -> List[RecadoItem]:
     """
-    Lista recados com filtros opcionais para grupo e status.
-    Os resultados são ordenados por data (mais recente primeiro).
+    Lista os recados, com filtros e paginação.
+
+    Args:
+        db: A sessão do banco de dados.
+        skip: O número de registros a pular (para paginação).
+        limit: O número máximo de registros a retornar.
+        group_filter: Filtra os resultados por grupo (ex: 'Coral', 'Orquestra').
+        active_only: Se True, retorna apenas os recados ativos.
+
+    Returns:
+        Uma lista de objetos RecadoItem.
     """
     query = db.query(RecadoItem)
     
@@ -33,7 +50,7 @@ def get_recado_items(
     return query.order_by(RecadoItem.date.desc()).offset(skip).limit(limit).all()
 
 def create_recado_item(db: Session, item: RecadoItemCreate) -> RecadoItem:
-    """Cria um novo recado."""
+    """Cria um novo recado no banco de dados."""
     db_item = RecadoItem(**item.model_dump())
     db.add(db_item)
     db.commit()
@@ -41,7 +58,7 @@ def create_recado_item(db: Session, item: RecadoItemCreate) -> RecadoItem:
     return db_item
 
 def update_recado_item(db: Session, item_id: int, item_update: RecadoItemUpdate) -> Optional[RecadoItem]:
-    """Atualiza um recado."""
+    """Atualiza um recado existente."""
     db_item = db.query(RecadoItem).filter(RecadoItem.id == item_id).first()
     if db_item:
         update_data = item_update.model_dump(exclude_unset=True)
