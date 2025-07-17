@@ -1,5 +1,5 @@
 // pages/ContentPage.tsx
-# Versão 20 17/07/2025 17:30
+// Versão 20 17/07/2025 17:30
 import React, { useState, useEffect, useMemo } from 'react';
 import { getRepertorio, getAgenda, getRecados } from '../services/api';
 import { GroupType, RepertorioItem, AgendaItem, RecadoItem, Naipe, OrquestraGrupo } from '../types';
