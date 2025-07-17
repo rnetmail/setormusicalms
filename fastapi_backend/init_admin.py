@@ -1,46 +1,43 @@
-#!/usr/bin/env python3
-"""
-Script para criar usuário admin inicial
-"""
+# fastapi_backend/init_admin.py
+# Versão 31 17/07/2025 22:30
 import sys
 import os
+
+# Adiciona o diretório raiz ao path para permitir importações relativas
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from sqlalchemy.orm import Session
-from app.database import SessionLocal, engine
-from models.user import User
+from app.database import SessionLocal, engine, Base
+from app.models.user import User
 from auth.security import get_password_hash
-from models import user, repertorio, agenda, recado
+# Importar todos os modelos para garantir que todas as tabelas sejam criadas
+from app.models import repertorio, agenda, recado
 
-def create_tables():
-    """Cria todas as tabelas no banco de dados"""
-    user.Base.metadata.create_all(bind=engine)
-    repertorio.Base.metadata.create_all(bind=engine)
-    agenda.Base.metadata.create_all(bind=engine)
-    recado.Base.metadata.create_all(bind=engine)
+def create_database_and_tables():
+    """Cria o ficheiro .db e todas as tabelas no banco de dados se não existirem."""
+    print("A criar tabelas...")
+    Base.metadata.create_all(bind=engine)
     print("✅ Tabelas criadas com sucesso!")
 
 def create_admin_user():
-    """Cria ou atualiza o usuário admin"""
+    """Cria ou atualiza o usuário 'admin' com permissões de superusuário."""
     db = SessionLocal()
     try:
-        # Verifica se o admin já existe
-        admin_user = db.query(User).filter(User.username == "admin").first()
+        admin_username = "admin"
+        admin_password = "Setor@MS25"  # Recomenda-se usar uma variável de ambiente para isso
+        
+        # Verifica se o usuário admin já existe
+        admin_user = db.query(User).filter(User.username == admin_username).first()
         
         if admin_user:
-            # Atualiza o usuário existente
-            admin_user.hashed_password = get_password_hash("Setor@MS25")
-            admin_user.is_active = True
-            admin_user.is_staff = True
-            admin_user.is_superuser = True
-            admin_user.email = "admin@setormusicalms.art.br"
-            print("✅ Usuário admin atualizado!")
+            print(f"Usuário '{admin_username}' já existe. A verificar a senha...")
+            # Opcional: pode-se atualizar a senha se necessário
+            # admin_user.hashed_password = get_password_hash(admin_password)
         else:
-            # Cria novo usuário admin
+            print(f"A criar o usuário '{admin_username}'...")
             admin_user = User(
-                username="admin",
+                username=admin_username,
                 email="admin@setormusicalms.art.br",
-                hashed_password=get_password_hash("Setor@MS25"),
+                hashed_password=get_password_hash(admin_password),
                 first_name="Admin",
                 last_name="Sistema",
                 is_active=True,
@@ -51,20 +48,15 @@ def create_admin_user():
             print("✅ Usuário admin criado!")
         
         db.commit()
-        print(f"Username: {admin_user.username}")
-        print(f"Password: Setor@MS25")
-        print(f"Email: {admin_user.email}")
-        print(f"is_staff: {admin_user.is_staff}")
-        print(f"is_superuser: {admin_user.is_superuser}")
         
     except Exception as e:
-        print(f"❌ Erro ao criar admin: {e}")
+        print(f"❌ Erro ao criar/verificar o usuário admin: {e}")
         db.rollback()
     finally:
         db.close()
 
 if __name__ == "__main__":
-    print("🚀 Inicializando banco de dados...")
-    create_tables()
+    print("🚀 A iniciar a inicialização do banco de dados...")
+    create_database_and_tables()
     create_admin_user()
-    print("✅ Inicialização concluída!")
+    print("✅ Processo de inicialização concluído!")
