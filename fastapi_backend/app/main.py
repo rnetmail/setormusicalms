@@ -1,15 +1,17 @@
+# fastapi_backend/app/main.py
+# Versão 10 16/07/2025 21:42
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
-from app.database import engine
-from models import user, repertorio, agenda, recado
-from app.routers import auth, users, repertorio as repertorio_router, agenda as agenda_router, recados
+from fastapi.routing import APIRouter
 
-# Create database tables
-user.Base.metadata.create_all(bind=engine)
-repertorio.Base.metadata.create_all(bind=engine)
-agenda.Base.metadata.create_all(bind=engine)
-recado.Base.metadata.create_all(bind=engine)
+# Importa a engine do banco de dados e a Base para criação das tabelas
+from .database import engine, Base
+# Importa os routers de cada módulo da aplicação
+from .routers import auth, users, repertorio, agenda, recados
+
+# Este comando é crucial: ele cria o ficheiro .db e todas as tabelas
+# (users, repertorio_items, etc.) na primeira vez que a aplicação é executada.
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Setor Musical MS API",
@@ -17,26 +19,29 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS
+# Adiciona o middleware de CORS para permitir que o frontend (em outro domínio/porta)
+# possa fazer requisições para esta API.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=["*"],  # Permite requisições de qualquer origem.
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Permite todos os métodos HTTP (GET, POST, PUT, DELETE, etc).
+    allow_headers=["*"],  # Permite todos os cabeçalhos nas requisições.
 )
 
-# Include routers
-app.include_router(auth.router, prefix="/api")
-app.include_router(users.router, prefix="/api")
-app.include_router(repertorio_router.router, prefix="/api")
-app.include_router(agenda_router.router, prefix="/api")
-app.include_router(recados.router, prefix="/api")
+# Cria um router principal para agrupar todas as rotas da API sob um único prefixo.
+# Isso organiza os endpoints e facilita a configuração do proxy.
+api_router = APIRouter(prefix="/api")
 
-@app.get("/")
+api_router.include_router(auth.router, tags=["Autenticação"])
+api_router.include_router(users.router, tags=["Usuários"])
+api_router.include_router(repertorio.router, tags=["Repertório"])
+api_router.include_router(agenda.router, tags=["Agenda"])
+api_router.include_router(recados.router, tags=["Recados"])
+
+app.include_router(api_router)
+
+@app.get("/", tags=["Root"])
 def read_root():
-    return {"message": "Setor Musical MS API is running"}
-
-@app.get("/api/health")
-def health_check():
-    return {"status": "healthy", "message": "API is running properly"}
+    """Endpoint raiz para uma verificação rápida de que a API está no ar."""
+    return {"status": "ok", "message": "Bem-vindo à API do Setor Musical MS"}
