@@ -1,14 +1,22 @@
 # fastapi_backend/crud/agenda.py
-# Versão 76 18/07/2025 08:48
+# Versão 09 17/07/2025 17:05
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-# CORREÇÃO: As importações agora apontam para os pacotes corretos na raiz.
 from models.agenda import AgendaItem
 from schemas.agenda import AgendaItemCreate, AgendaItemUpdate
 
 def get_agenda_item(db: Session, item_id: int) -> Optional[AgendaItem]:
-    """Busca um item da agenda específico pelo ID."""
+    """
+    Busca um item da agenda específico pelo seu ID.
+
+    Args:
+        db: A sessão do banco de dados.
+        item_id: O ID do item da agenda a ser buscado.
+
+    Returns:
+        O objeto AgendaItem se encontrado, caso contrário None.
+    """
     return db.query(AgendaItem).filter(AgendaItem.id == item_id).first()
 
 def get_agenda_items(
@@ -19,8 +27,17 @@ def get_agenda_items(
     active_only: bool = True
 ) -> List[AgendaItem]:
     """
-    Lista itens da agenda com filtros opcionais para grupo e status.
-    Os resultados são ordenados por data (mais recente primeiro).
+    Lista os itens da agenda, com filtros e paginação.
+
+    Args:
+        db: A sessão do banco de dados.
+        skip: O número de registros a pular (para paginação).
+        limit: O número máximo de registros a retornar.
+        group_filter: Filtra os resultados por grupo (ex: 'Coral', 'Orquestra').
+        active_only: Se True, retorna apenas os itens ativos.
+
+    Returns:
+        Uma lista de objetos AgendaItem.
     """
     query = db.query(AgendaItem)
     
@@ -41,7 +58,7 @@ def create_agenda_item(db: Session, item: AgendaItemCreate) -> AgendaItem:
     return db_item
 
 def update_agenda_item(db: Session, item_id: int, item_update: AgendaItemUpdate) -> Optional[AgendaItem]:
-    """Atualiza um item da agenda."""
+    """Atualiza um item da agenda existente."""
     db_item = db.query(AgendaItem).filter(AgendaItem.id == item_id).first()
     if db_item:
         update_data = item_update.model_dump(exclude_unset=True)
