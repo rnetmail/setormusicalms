@@ -1,5 +1,5 @@
 # fastapi_backend/tests/test_crud_playwright.py
-# Versão 65 18/07/2025 00:25
+# Versão 71 18/07/2025 08:30
 import pytest
 from playwright.async_api import async_playwright, Page, Browser
 from datetime import datetime
@@ -11,22 +11,16 @@ ADMIN_PASSWORD = "Setor@MS25"
 @pytest.mark.asyncio
 class TestCrudPlaywright:
     @pytest.fixture(scope="class", autouse=True)
-    async def browser_setup(self):
-        async with async_playwright() as p:
-            self.browser = await p.chromium.launch(headless=True, slow_mo=50)
-            yield
-            await self.browser.close()
+    async def browser_context_setup(self, playwright: async_playwright):
+        """Inicializa o browser uma vez para todos os testes da classe."""
+        self.browser = await playwright.chromium.launch(headless=True, slow_mo=50)
+        yield
+        await self.browser.close()
 
-    @pytest.fixture(scope="function")
-    async def page(self, browser_setup) -> Page:
-        # CORREÇÃO: A fixture agora é uma função 'async' e usa 'yield'.
-        page = await self.browser.new_page()
-        await page.set_viewport_size({"width": 1280, "height": 800})
-        yield page
-        await page.close()
-
-    async def test_admin_login(self, page: Page):
-        """Testa o fluxo de login no painel de gestão."""
+    # A fixture de página foi removida para usar um contexto por teste.
+    
+    async def admin_login(self, page: Page):
+        """Função auxiliar para realizar o login."""
         await page.goto(f"{BASE_URL}/#/gestao/login", timeout=30000)
         await page.fill('input[name="username"]', ADMIN_USERNAME)
         await page.fill('input[name="password"]', ADMIN_PASSWORD)
@@ -34,9 +28,18 @@ class TestCrudPlaywright:
         await page.wait_for_url(f"{BASE_URL}/#/gestao", timeout=10000)
         assert await page.locator("h1:has-text('Painel de Gestão')").is_visible()
 
-    async def test_create_and_delete_repertorio_item(self, page: Page):
+    async def test_admin_login_flow(self):
+        """Testa o fluxo de login no painel de gestão."""
+        # CORREÇÃO: Cada teste agora cria o seu próprio contexto de página.
+        page = await self.browser.new_page()
+        await self.admin_login(page)
+        await page.close()
+
+    async def test_create_and_delete_repertorio_item(self):
         """Testa a criação e remoção de um item de repertório."""
-        await self.test_admin_login(page)
+        page = await self.browser.new_page()
+        await self.admin_login(page)
+        
         await page.click("button:has-text('Coral')")
         await page.click("button:has-text('Adicionar Novo')")
 
@@ -47,13 +50,13 @@ class TestCrudPlaywright:
         await page.fill('input[name="sheetMusicUrl"]', "http://exemplo.com/partitura.pdf")
         
         await page.click("button:has-text('Salvar')")
-        
         await page.wait_for_selector(f"text={item_title}", timeout=5000)
 
         item_row = page.locator("tr", has_text=item_title)
         page.on("dialog", lambda dialog: dialog.accept())
         
-        await item_row.locator('button[aria-label="delete-item"]').click()
+        await item_row.locator('button:has([d*="M9 2a1"])').click()
         
         await page.wait_for_timeout(2000)
         assert not await page.locator(f"text={item_title}").is_visible()
+        await page.close()
