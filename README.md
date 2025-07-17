@@ -1,54 +1,55 @@
-# Setor Musical MS
+# fastapi_backend/README.md
+# Versão 81 18/07/2025 09:42
 
-Este é o repositório para o sistema de gerenciamento do Setor Musical MS. A aplicação foi desenvolvida utilizando uma arquitetura moderna e containerizada para facilitar o desenvolvimento e o deploy.
+# Setor Musical MS - API e Frontend
 
-## 🚀 Arquitetura 
+Este projeto contém uma aplicação web completa com um backend FastAPI e um frontend React.
 
-O projeto é composto por dois serviços principais, orquestrados com Docker Compose:
+## Visão Geral da Arquitetura
 
-*   **Backend:** Uma API RESTful desenvolvida com **FastAPI** (Python).
-*   **Frontend:** Uma aplicação single-page (SPA) (assumindo React/Vue/Angular).
-*   **Banco de Dados:** **SQLite**, persistido através de um volume Docker para simplicidade e portabilidade.
-*   **CI/CD:** O deploy é automatizado via **GitHub Actions**. A cada push na branch `main`, os testes são executados e, se passarem, a nova versão é enviada para a VPS, onde a aplicação é reiniciada.
+- **Backend:** Uma API RESTful construída com **FastAPI**, servindo dados a partir de um banco de dados **SQLite**.
+- **Frontend:** Uma Single-Page Application (SPA) construída com **React** e **TypeScript**.
+- **Containerização:** A aplicação inteira é containerizada usando **Docker** e orquestrada com **Docker Compose**.
+- **Servidor Web:** O **Nginx** é usado como servidor web para o frontend React e como proxy reverso para a API FastAPI.
 
-## 📋 Pré-requisitos
+## Estrutura de Pastas
 
-*   Docker
-*   Docker Compose
+- `fastapi_backend/`: Contém todo o código-fonte da API FastAPI.
+  - `app/`: Onde a aplicação FastAPI e os seus routers são definidos.
+  - `models/`: Contém os modelos de dados do SQLAlchemy.
+  - `schemas/`: Contém os schemas de validação de dados do Pydantic.
+  - `crud/`: Contém a lógica de acesso ao banco de dados (Create, Read, Update, Delete).
+- `src/` (ou raiz): Contém o código-fonte do frontend React.
+- `docker-compose.yml`: Define os serviços, redes e volumes do Docker.
+- `Dockerfile`: Usado para construir a imagem do frontend.
+- `fastapi_backend/Dockerfile`: Usado para construir a imagem do backend.
 
-## 💻 Rodando Localmente
+## Rodando Localmente
 
-1.  **Clone o repositório:**
+**Pré-requisitos:**
+- Docker
+- Docker Compose v2
+
+**Passos:**
+
+1.  **Construir e Iniciar os Contentores:**
+    Na raiz do projeto, execute:
     ```bash
-    git clone https://github.com/seu-usuario/setormusicalms.git
-    cd setormusicalms
+    docker compose up --build -d
     ```
 
-2.  **Suba os containers:**
-    O comando a seguir irá construir as imagens do frontend e backend e iniciar os containers.
+2.  **Inicializar o Banco de Dados (Apenas na primeira vez):**
+    Para criar as tabelas e o usuário administrador padrão, execute:
     ```bash
-    docker-compose up --build
+    docker compose exec backend python init_admin.py
     ```
 
-3.  **Acesse as aplicações:**
-    *   **Frontend:** http://localhost:3000
-    *   **Backend (API Docs):** http://localhost:8000/docs
+3.  **Aceder à Aplicação:**
+    - **Frontend:** [http://localhost:3000](http://localhost:3000)
+    - **Backend (API Docs):** [http://localhost:8000/docs](http://localhost:8000/docs)
 
-O banco de dados SQLite será criado e armazenado no volume `sqlite_db` gerenciado pelo Docker.
+## Rodando os Testes
 
-## 🧪 Rodando os Testes
-
-Para executar os testes do backend manualmente:
-
+Para executar a suíte de testes automatizados, use o seguinte comando:
 ```bash
-docker-compose exec backend pytest
-```
-
-## ⚙️ Deploy
-
-O deploy para o ambiente de produção (VPS) é totalmente automatizado. Simplesmente faça um push ou merge para a branch `main`. O workflow do GitHub Actions (`.github/workflows/deploy.yml`) se encarregará de:
-
-1.  Rodar os testes para garantir a integridade do código.
-2.  Sincronizar os arquivos do projeto com o servidor via `rsync`.
-3.  Reiniciar os serviços no servidor usando `docker-compose` para que as novas alterações entrem no ar.
-
+docker compose exec backend pytest
