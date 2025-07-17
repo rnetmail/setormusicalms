@@ -1,23 +1,20 @@
 # .github/workflows/deploy.yml
-# Versão 33 17/07/2025 22:32
+# Versão 35 17/07/2025 22:38
 
 name: CI/CD - Build, Test, and Deploy
 
 on:
-  # Este workflow é acionado a cada push para a branch 'main'.
   push:
     branches:
       - main
 
 env:
-  # Define o registro e os nomes das imagens para fácil reutilização.
   REGISTRY: ghcr.io
   IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
   IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
   PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
 
 jobs:
-  # JOB 1: Garante a qualidade do código antes de qualquer build ou deploy.
   lint_and_test:
     runs-on: ubuntu-latest
     steps:
@@ -30,22 +27,24 @@ jobs:
           python-version: '3.11'
 
       - name: 3. Instalar dependências do backend
-        # CORREÇÃO: Usa o requirements.txt da pasta correta.
         run: |
           python -m pip install --upgrade pip
           pip install -r fastapi_backend/requirements.txt
 
-      - name: 4. Rodar testes com Pytest
-        # CORREÇÃO: Roda os testes na pasta correta.
+      - name: 4. Instalar navegadores para o Playwright
+        # CORREÇÃO: Adiciona o comando para instalar os binários do Playwright.
+        run: |
+          playwright install --with-deps
+
+      - name: 5. Rodar testes com Pytest
         run: pytest fastapi_backend/
 
-  # JOB 2: Constrói as imagens Docker e as envia para o registro do GitHub.
   build_and_push:
     needs: lint_and_test
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write # Permissão para publicar imagens.
+      packages: write
     steps:
       - name: 1. Checkout do código
         uses: actions/checkout@v4
@@ -60,7 +59,6 @@ jobs:
       - name: 3. Build e Push da imagem do Backend
         uses: docker/build-push-action@v5
         with:
-          # CORREÇÃO: Usa o contexto da pasta correta.
           context: ./fastapi_backend
           push: true
           tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
@@ -68,13 +66,11 @@ jobs:
       - name: 4. Build e Push da imagem do Frontend
         uses: docker/build-push-action@v5
         with:
-          # CORREÇÃO: O contexto é a raiz do projeto, onde está o Dockerfile do frontend.
           context: .
           dockerfile: Dockerfile
           push: true
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
-  # JOB 3: Faz o deploy das novas imagens na VPS.
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
@@ -89,21 +85,14 @@ jobs:
           script: |
             echo ">> A aceder ao diretório do projeto..."
             cd ${{ env.PROJECT_PATH_ON_VPS }}
-
             echo ">> A fazer login no GitHub Container Registry na VPS..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-
             echo ">> A puxar as imagens mais recentes..."
             docker-compose pull
-
             echo ">> A reiniciar os serviços com as novas imagens..."
             docker-compose up -d
-
             echo ">> A garantir que a base de dados e o admin estão inicializados..."
-            # CORREÇÃO: Adiciona a execução do script de inicialização.
             docker-compose exec backend python fastapi_backend/init_admin.py
-
             echo ">> A limpar imagens Docker antigas para economizar espaço..."
             docker image prune -af
-
             echo ">> ✅ Deploy finalizado com sucesso!"
