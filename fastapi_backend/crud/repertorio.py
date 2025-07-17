@@ -1,9 +1,8 @@
 # fastapi_backend/crud/repertorio.py
-# Versão 75 18/07/2025 08:47
+# Versão 07 17/07/2025 16:59
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-# CORREÇÃO: As importações agora apontam para os pacotes corretos na raiz.
 from models.repertorio import RepertorioItem
 from schemas.repertorio import RepertorioItemCreate, RepertorioItemUpdate
 from utils.media_converter import process_media_urls
@@ -20,8 +19,8 @@ def get_repertorio_items(
     active_only: bool = True
 ) -> List[RepertorioItem]:
     """
-    Lista itens do repertório com filtros opcionais para tipo e status (ativo/inativo).
-    Os resultados são ordenados por ano (mais recente primeiro) e depois por título.
+    Lista itens do repertório com filtros para tipo e status.
+    Os resultados são ordenados por ano (mais recente) e título.
     """
     query = db.query(RepertorioItem)
     
@@ -34,9 +33,13 @@ def get_repertorio_items(
     return query.order_by(RepertorioItem.year.desc(), RepertorioItem.title).offset(skip).limit(limit).all()
 
 def create_repertorio_item(db: Session, item: RepertorioItemCreate) -> RepertorioItem:
-    """Cria um novo item de repertório, processando as URLs de mídia antes de salvar."""
+    """
+    Cria um novo item de repertório.
+    A conversão das URLs de mídia é aplicada aqui, antes de salvar no banco.
+    """
     item_data = item.model_dump()
     
+    # Aplica a conversão de URLs do Google Drive e YouTube.
     processed_data = process_media_urls(item_data)
     
     db_item = RepertorioItem(**processed_data)
@@ -46,13 +49,17 @@ def create_repertorio_item(db: Session, item: RepertorioItemCreate) -> Repertori
     return db_item
 
 def update_repertorio_item(db: Session, item_id: int, item_update: RepertorioItemUpdate) -> Optional[RepertorioItem]:
-    """Atualiza um item de repertório, processando as URLs de mídia se forem alteradas."""
+    """
+    Atualiza um item de repertório.
+    A conversão de URLs de mídia é aplicada nos campos alterados.
+    """
     db_item = db.query(RepertorioItem).filter(RepertorioItem.id == item_id).first()
     if not db_item:
         return None
     
     update_data = item_update.model_dump(exclude_unset=True)
     
+    # Se alguma URL for atualizada, ela será processada.
     processed_update_data = process_media_urls(update_data)
     
     for field, value in processed_update_data.items():
@@ -63,7 +70,7 @@ def update_repertorio_item(db: Session, item_id: int, item_update: RepertorioIte
     return db_item
 
 def delete_repertorio_item(db: Session, item_id: int) -> Optional[RepertorioItem]:
-    """Remove um item de repertório do banco de dados."""
+    """Remove um item de repertório do banco de dados (hard delete)."""
     db_item = db.query(RepertorioItem).filter(RepertorioItem.id == item_id).first()
     if db_item:
         db.delete(db_item)
