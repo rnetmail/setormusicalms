@@ -1,25 +1,34 @@
+# fastapi_backend/Dockerfile
+# Versão 44 17/07/2025 23:20
+
+# Use a imagem oficial do Python como imagem base.
+# A versão 'slim' é menor e boa para produção.
 FROM python:3.11-slim
 
+# Define o diretório de trabalho dentro do contentor.
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Define variáveis de ambiente para garantir que o Python execute em modo não-bufferizado,
+# o que é melhor para logs em contentores.
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
-# Copy requirements and install Python dependencies
+# Copia primeiro o ficheiro de requisitos para aproveitar o cache do Docker.
+# Se o ficheiro não mudar, o Docker reutiliza a camada e não reinstala tudo.
 COPY requirements.txt .
+
+# Instala as dependências Python.
+RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copia todo o código da aplicação do seu computador para dentro do contentor.
 COPY . .
 
-# Make init script executable
-RUN chmod +x init_admin.py
-
-# Expose port
+# A porta que a aplicação vai escutar dentro do contentor.
+# O docker-compose fará o mapeamento desta porta para a porta 8001 no anfitrião.
 EXPOSE 8000
 
-# Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# O comando para iniciar a aplicação é definido no docker-compose.yml,
+# então não é estritamente necessário aqui, mas é uma boa prática
+# para tornar a imagem executável por si só.
+# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
