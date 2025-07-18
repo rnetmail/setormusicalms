@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 41 18/07/2025 11:05
+# Versão 43 18/07/2025 11:20
 
 name: CI/CD - Testar, Construir e Implementar
 
@@ -85,26 +85,4 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
-            echo ">> Acedendo ao diretório do projeto: ${{ env.PROJECT_PATH_ON_VPS }}"
-            cd ${{ env.PROJECT_PATH_ON_VPS }}
-            
-            echo ">> Efetuando login no GitHub Container Registry..."
-            # CORREÇÃO: Removido 'sudo' de todos os comandos docker
-            echo ${{ secrets.GIT_PAT }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-            
-            echo ">> Puxando as imagens mais recentes..."
-            docker compose pull
-            
-            echo ">> Reiniciando os serviços..."
-            docker compose up -d
-            
-            echo ">> Aguardando os contentores estabilizarem..."
-            sleep 10
-            
-            echo ">> Inicializando o banco de dados e o admin..."
-            docker compose exec backend python /app/init_admin.py
-            
-            echo ">> Limpando imagens Docker antigas..."
-            docker image prune -af
-            
-            echo ">> ✅ Deploy finalizado com sucesso!"
+            echo ">> Acedendo ao diretório do
