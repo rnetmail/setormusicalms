@@ -1,8 +1,9 @@
 # fastapi_backend/init_admin.py
-# Versão 88 18/07/2025 10:10
+# Versão 89 18/07/2025 10:15
 import sys
 import os
 
+# Adiciona o diretório raiz ao path para garantir que as importações funcionem
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import SessionLocal, engine, Base
@@ -12,11 +13,13 @@ from auth.password import get_password_hash
 from models import repertorio, agenda, recado
 
 def create_database_and_tables():
+    """Cria o ficheiro .db e todas as tabelas no banco de dados se não existirem."""
     print("A criar tabelas...")
     Base.metadata.create_all(bind=engine)
     print("✅ Tabelas criadas com sucesso!")
 
 def create_admin_user():
+    """Cria o usuário 'admin' com permissões de superusuário, se não existir."""
     db = SessionLocal()
     try:
         admin_username = "admin"
