@@ -27,7 +27,7 @@ services:
     ports:
       # CORREÇÃO CRÍTICA: Mapeia a porta 3000 do host para a porta 80 do contentor,
       # onde o Nginx está realmente a ouvir.
-      - "3000:80"
+      - "3000:3000"
     depends_on:
       - backend
     restart: unless-stopped
