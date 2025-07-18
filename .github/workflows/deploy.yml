@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 39 18/07/2025 10:55
+# Versão 40 18/07/2025 10:58
 
 name: CI/CD - Testar, Construir e Implementar
 
@@ -12,13 +12,12 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  # A etapa de 'test' permanece a mesma, pois está a funcionar bem.
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: docker compose up -d --build
-      - name: Aguardar e Verificar a Saúde da API
+      - name: Aguardar, Verificar Saúde e Inicializar DB
         run: |
           echo "A aguardar que a API esteja pronta..."
           timeout=60
@@ -32,7 +31,8 @@ jobs:
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
-          docker compose exec backend python fastapi_backend/init_admin.py
+          # CORREÇÃO: O caminho para o script dentro do contentor é /app/init_admin.py
+          docker compose exec backend python /app/init_admin.py
       - name: Instalar dependências e Executar Testes
         run: |
           pip install -r fastapi_backend/requirements.txt
@@ -42,7 +42,6 @@ jobs:
         if: always()
         run: docker compose down
 
-  # A etapa de 'build_and_push' permanece a mesma.
   build_and_push:
     needs: test
     runs-on: ubuntu-latest
@@ -75,6 +74,8 @@ jobs:
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: prod
+    env:
+      PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusical/setormusicalms
     steps:
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@master
@@ -84,14 +85,9 @@ jobs:
           password: ${{ secrets.VPS_SSH_PASS }}
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
-            # CORREÇÃO: Usa 'set -e' para que o script pare imediatamente se um comando falhar.
             set -e
-            
-            # CORREÇÃO: O caminho do projeto é definido diretamente e corretamente.
-            PROJECT_DIR="/home/setormusicalms/setormusical/setormusicalms"
-
-            echo ">> Acedendo ao diretório do projeto: $PROJECT_DIR"
-            cd $PROJECT_DIR
+            echo ">> Acedendo ao diretório do projeto: ${{ env.PROJECT_PATH_ON_VPS }}"
+            cd ${{ env.PROJECT_PATH_ON_VPS }}
             
             echo ">> Efetuando login no GitHub Container Registry..."
             echo ${{ secrets.GIT_PAT }} | sudo docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
@@ -106,7 +102,8 @@ jobs:
             sleep 10
             
             echo ">> Inicializando o banco de dados e o admin..."
-            sudo docker compose exec backend python fastapi_backend/init_admin.py
+            # CORREÇÃO: O caminho para o script dentro do contentor é /app/init_admin.py
+            sudo docker compose exec backend python /app/init_admin.py
             
             echo ">> Limpando imagens Docker antigas..."
             sudo docker image prune -af
