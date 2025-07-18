@@ -1,9 +1,9 @@
 # fastapi_backend/crud/repertorio.py
-# Versão 86 18/07/2025 10:22
+# Versão 12 17/07/2025 23:57
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-# CORREÇÃO: As importações agora apontam para os pacotes corretos na raiz.
+# Importações absolutas a partir da raiz do pacote 'fastapi_backend'
 from models.repertorio import RepertorioItem
 from schemas.repertorio import RepertorioItemCreate, RepertorioItemUpdate
 from utils.media_converter import process_media_urls
@@ -20,7 +20,7 @@ def get_repertorio_items(
     active_only: bool = True
 ) -> List[RepertorioItem]:
     """
-    Lista itens do repertório com filtros opcionais para tipo e status (ativo/inativo).
+    Lista itens do repertório com filtros e paginação.
     Os resultados são ordenados por ano (mais recente primeiro) e depois por título.
     """
     query = db.query(RepertorioItem)
@@ -37,6 +37,7 @@ def create_repertorio_item(db: Session, item: RepertorioItemCreate) -> Repertori
     """Cria um novo item de repertório, processando as URLs de mídia antes de salvar."""
     item_data = item.model_dump()
     
+    # Converte as URLs de mídia para formatos adequados (download direto, embed, etc.)
     processed_data = process_media_urls(item_data)
     
     db_item = RepertorioItem(**processed_data)
@@ -53,6 +54,7 @@ def update_repertorio_item(db: Session, item_id: int, item_update: RepertorioIte
     
     update_data = item_update.model_dump(exclude_unset=True)
     
+    # Processa as URLs de mídia apenas se elas estiverem presentes nos dados de atualização.
     processed_update_data = process_media_urls(update_data)
     
     for field, value in processed_update_data.items():
