@@ -1,71 +1,55 @@
-# fastapi_backend/crud/repertorio.py
-# Versão 86 18/07/2025 10:22
-from sqlalchemy.orm import Session
-from typing import List, Optional
+# README.md
+# Versão 22 18/07/2025 00:15
 
-# CORREÇÃO: As importações agora apontam para os pacotes corretos na raiz.
-from models.repertorio import RepertorioItem
-from schemas.repertorio import RepertorioItemCreate, RepertorioItemUpdate
-from utils.media_converter import process_media_urls
+# 🎵 Setor Musical MS - API e Frontend
 
-def get_repertorio_item(db: Session, item_id: int) -> Optional[RepertorioItem]:
-    """Busca um item de repertório específico pelo ID."""
-    return db.query(RepertorioItem).filter(RepertorioItem.id == item_id).first()
+Este é o repositório oficial da aplicação web do Setor Musical Mokiti Okada de Mato Grosso do Sul. O projeto consiste em uma API de backend desenvolvida com FastAPI e um frontend SPA (Single-Page Application) desenvolvido com React e TypeScript.
 
-def get_repertorio_items(
-    db: Session, 
-    skip: int = 0, 
-    limit: int = 100, 
-    type_filter: Optional[str] = None,
-    active_only: bool = True
-) -> List[RepertorioItem]:
-    """
-    Lista itens do repertório com filtros opcionais para tipo e status (ativo/inativo).
-    Os resultados são ordenados por ano (mais recente primeiro) e depois por título.
-    """
-    query = db.query(RepertorioItem)
-    
-    if type_filter:
-        query = query.filter(RepertorioItem.type == type_filter)
-    
-    if active_only:
-        query = query.filter(RepertorioItem.active == True)
-    
-    return query.order_by(RepertorioItem.year.desc(), RepertorioItem.title).offset(skip).limit(limit).all()
+## 🏗️ Visão Geral da Arquitetura
 
-def create_repertorio_item(db: Session, item: RepertorioItemCreate) -> RepertorioItem:
-    """Cria um novo item de repertório, processando as URLs de mídia antes de salvar."""
-    item_data = item.model_dump()
-    
-    processed_data = process_media_urls(item_data)
-    
-    db_item = RepertorioItem(**processed_data)
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
+-   **Backend:** Uma API RESTful moderna construída com **FastAPI**, utilizando SQLAlchemy para o ORM e Pydantic para validação de dados. Para desenvolvimento local, utiliza um banco de dados **SQLite**.
+-   **Frontend:** Uma aplicação interativa construída com **React**, **TypeScript** e **Vite**, estilizada com **Tailwind CSS**.
+-   **Containerização:** A aplicação inteira é containerizada usando **Docker** e orquestrada com **Docker Compose** para simplificar a configuração do ambiente de desenvolvimento.
+-   **Servidor Web:** **Nginx** é utilizado em produção (e no build Docker) para servir os arquivos estáticos do frontend e atuar como proxy reverso para a API do backend.
 
-def update_repertorio_item(db: Session, item_id: int, item_update: RepertorioItemUpdate) -> Optional[RepertorioItem]:
-    """Atualiza um item de repertório, processando as URLs de mídia se forem alteradas."""
-    db_item = db.query(RepertorioItem).filter(RepertorioItem.id == item_id).first()
-    if not db_item:
-        return None
-    
-    update_data = item_update.model_dump(exclude_unset=True)
-    
-    processed_update_data = process_media_urls(update_data)
-    
-    for field, value in processed_update_data.items():
-        setattr(db_item, field, value)
-    
-    db.commit()
-    db.refresh(db_item)
-    return db_item
+## 🚀 Rodando o Projeto Localmente
 
-def delete_repertorio_item(db: Session, item_id: int) -> Optional[RepertorioItem]:
-    """Remove um item de repertório do banco de dados."""
-    db_item = db.query(RepertorioItem).filter(RepertorioItem.id == item_id).first()
-    if db_item:
-        db.delete(db_item)
-        db.commit()
-    return db_item
+Siga os passos abaixo para executar a aplicação completa em seu ambiente de desenvolvimento.
+
+### Pré-requisitos
+
+-   Docker (`v20.10+`)
+-   Docker Compose (`v2.5+`)
+
+### Passos para Instalação
+
+1.  **Clone o Repositório**
+    ```bash
+    git clone [https://github.com/rnetmail/setormusicalms.git](https://github.com/rnetmail/setormusicalms.git)
+    cd setormusicalms
+    ```
+
+2.  **Construa e Inicie os Contentores**
+    Este comando irá construir as imagens do frontend e do backend e iniciar todos os serviços definidos no `docker-compose.yml`.
+    ```bash
+    docker compose up --build -d
+    ```
+
+3.  **Inicialize o Banco de Dados (Apenas na Primeira Vez)**
+    Este script cria as tabelas do banco de dados SQLite e insere o usuário administrador padrão (`admin` / `Setor@MS25`).
+    ```bash
+    docker compose exec backend python init_admin.py
+    ```
+
+4.  **Aceda à Aplicação**
+    Após os passos anteriores, a aplicação estará disponível nos seguintes endereços:
+    -   **Frontend:** [http://localhost:3000](http://localhost:3000)
+    -   **Backend (Documentação da API):** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+## 🧪 Executando os Testes
+
+A suíte de testes automatizados utiliza `pytest` para testes de API e `Playwright` para testes de interface. Para executá-los, o ambiente Docker deve estar de pé.
+
+```bash
+# Executar todos os testes dentro do contentor do backend
+docker compose exec backend pytest
