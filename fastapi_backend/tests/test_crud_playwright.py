@@ -1,5 +1,5 @@
 # fastapi_backend/tests/test_crud_playwright.py
-# Versão 31 18/07/2025 00:35
+# Versão 32 18/07/2025 00:38
 import pytest
 from playwright.async_api import async_playwright, Page
 from datetime import datetime
@@ -37,6 +37,7 @@ class TestCrudPlaywright:
     async def test_create_and_delete_repertorio_item(self):
         """Testa a criação e remoção de um item de repertório através da UI."""
         page = await self.browser.new_page()
+        # CORREÇÃO: Restaurado o bloco 'finally' para garantir que a página seja fechada.
         try:
             await self.admin_login(page)
             
@@ -53,4 +54,12 @@ class TestCrudPlaywright:
             await page.wait_for_selector(f"text={item_title}", timeout=5000)
 
             item_row = page.locator("tr", has_text=item_title)
-            # Aceita o diálogo
+            # Aceita o diálogo de confirmação do browser
+            page.on("dialog", lambda dialog: dialog.accept())
+            
+            await item_row.locator('button[aria-label="delete-item"]').click()
+            
+            await page.wait_for_timeout(2000)
+            assert not await page.locator(f"text={item_title}").is_visible()
+        finally:
+            await page.close()
