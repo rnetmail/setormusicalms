@@ -1,5 +1,5 @@
 # fastapi_backend/auth/security.py
-# Versão 05 17/07/2025 16:45
+# Versão 87 18/07/2025 10:08
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -8,28 +8,18 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-# Importações de módulos do nosso projeto
-import crud.user
-import models.user
-import schemas.user
+import crud
+import models
+import schemas
 from app.config import settings
 from app.database import get_db
+# A importação das funções de senha foi removida daqui.
 
-# O `tokenUrl` deve apontar para o endpoint de login.
+# O tokenUrl deve corresponder ao endpoint de login completo.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """
-    Cria um novo token de acesso JWT.
-
-    Args:
-        data: O dicionário de dados a ser incluído no payload do token (geralmente o 'sub' com o username).
-        expires_delta: Duração opcional para a expiração do token.
-
-    Returns:
-        O token JWT codificado como uma string.
-    """
+    """Cria um novo token de acesso JWT."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -43,8 +33,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.user.User:
     """
-    Dependência que decodifica o token JWT, valida e retorna o usuário do banco de dados.
-    Esta função é o pilar para proteger endpoints.
+    Dependência que decodifica o token JWT, extrai o nome de usuário e busca o usuário no banco de dados.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
