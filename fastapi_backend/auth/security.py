@@ -1,5 +1,5 @@
 # fastapi_backend/auth/security.py
-# Versão 87 18/07/2025 10:08
+# Versão 08 17/07/2025 23:52
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -8,18 +8,27 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-import crud
-import models
-import schemas
+# Importações absolutas a partir da raiz do pacote 'fastapi_backend'
 from app.config import settings
 from app.database import get_db
-# A importação das funções de senha foi removida daqui.
+from crud import user as crud_user
+from models import user as model_user
+from schemas import user as schema_user
 
-# O tokenUrl deve corresponder ao endpoint de login completo.
+# Define o endpoint de login para o fluxo OAuth2. O tokenUrl deve ser o caminho completo.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Cria um novo token de acesso JWT."""
+    """
+    Cria um novo token de acesso JWT.
+
+    Args:
+        data: O dicionário de dados a ser codificado no token (geralmente o 'sub' com o username).
+        expires_delta: Duração opcional para a expiração do token.
+
+    Returns:
+        O token JWT codificado como uma string.
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -30,10 +39,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.user.User:
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> model_user.User:
     """
-    Dependência que decodifica o token JWT, extrai o nome de usuário e busca o usuário no banco de dados.
+    Dependência do FastAPI que decodifica o token JWT, valida e retorna o
+    usuário correspondente do banco de dados.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -42,27 +51,25 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
+        username: Optional[str] = payload.get("sub")
         if username is None:
             raise credentials_exception
-        token_data = schemas.user.TokenData(username=username)
+        token_data = schema_user.TokenData(username=username)
     except JWTError:
         raise credentials_exception
     
-    user = crud.user.get_user_by_username(db, username=token_data.username)
+    user = crud_user.get_user_by_username(db, username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
 
-
-def get_current_active_user(current_user: models.user.User = Depends(get_current_user)) -> models.user.User:
+def get_current_active_user(current_user: model_user.User = Depends(get_current_user)) -> model_user.User:
     """Dependência que garante que o usuário obtido do token está ativo."""
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Usuário inativo")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuário inativo")
     return current_user
 
-
-def get_current_staff_user(current_user: models.user.User = Depends(get_current_active_user)) -> models.user.User:
+def get_current_staff_user(current_user: model_user.User = Depends(get_current_active_user)) -> model_user.User:
     """Dependência que garante que o usuário é um membro da equipe (staff) ou superusuário."""
     if not current_user.is_staff and not current_user.is_superuser:
         raise HTTPException(
@@ -71,8 +78,7 @@ def get_current_staff_user(current_user: models.user.User = Depends(get_current_
         )
     return current_user
 
-
-def get_current_superuser(current_user: models.user.User = Depends(get_current_active_user)) -> models.user.User:
+def get_current_superuser(current_user: model_user.User = Depends(get_current_active_user)) -> model_user.User:
     """Dependência que garante que o usuário é um superusuário."""
     if not current_user.is_superuser:
         raise HTTPException(
