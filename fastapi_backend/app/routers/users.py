@@ -1,15 +1,15 @@
 # fastapi_backend/app/routers/users.py
-# Versão 13 17/07/2025 17:15
+# Versão 14 18/07/2025 00:00
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-# Importações de módulos da aplicação
-import crud.user
-import models.user
-import schemas.user
+# Importações absolutas, utilizando a nova estrutura de pacotes
 from app.database import get_db
 from auth.security import get_current_superuser
+from crud import user as crud_user
+from models import user as model_user
+from schemas import user as schema_user
 
 # Apenas superusuários podem acessar os endpoints deste router.
 router = APIRouter(
@@ -18,64 +18,51 @@ router = APIRouter(
     dependencies=[Depends(get_current_superuser)]
 )
 
-@router.post("/", response_model=schemas.user.User, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=schema_user.User, status_code=status.HTTP_201_CREATED)
 def create_user(
-    user: schemas.user.UserCreate,
+    user: schema_user.UserCreate,
     db: Session = Depends(get_db)
 ):
     """Cria um novo usuário. Apenas superusuários podem executar esta ação."""
-    try:
-        if crud.user.get_user_by_username(db, username=user.username):
-            raise HTTPException(status_code=400, detail="Usuário com este username já existe.")
-        if crud.user.get_user_by_email(db, email=user.email):
-            raise HTTPException(status_code=400, detail="Usuário com este e-mail já existe.")
-        
-        return crud.user.create_user(db=db, user=user)
-    except HTTPException as http_exc:
-        raise http_exc
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro interno ao criar usuário: {e}")
+    if crud_user.get_user_by_username(db, username=user.username):
+        raise HTTPException(status_code=400, detail="Usuário com este username já existe.")
+    if crud_user.get_user_by_email(db, email=user.email):
+        raise HTTPException(status_code=400, detail="Usuário com este e-mail já existe.")
+    
+    return crud_user.create_user(db=db, user=user)
 
-@router.get("/", response_model=List[schemas.user.User])
+@router.get("/", response_model=List[schema_user.User])
 def read_users(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
     """Lista todos os usuários. Apenas superusuários podem executar esta ação."""
-    try:
-        users = crud.user.get_users(db, skip=skip, limit=limit)
-        return users
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro interno ao listar usuários: {e}")
+    users = crud_user.get_users(db, skip=skip, limit=limit)
+    return users
 
-
-@router.get("/{user_id}", response_model=schemas.user.User)
+@router.get("/{user_id}", response_model=schema_user.User)
 def read_user(
     user_id: int,
     db: Session = Depends(get_db)
 ):
     """Obtém os detalhes de um usuário específico pelo ID."""
-    db_user = crud.user.get_user(db, user_id=user_id)
+    db_user = crud_user.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
     return db_user
 
-@router.put("/{user_id}", response_model=schemas.user.User)
+@router.put("/{user_id}", response_model=schema_user.User)
 def update_user(
     user_id: int,
-    user_update: schemas.user.UserUpdate,
+    user_update: schema_user.UserUpdate,
     db: Session = Depends(get_db)
 ):
     """Atualiza os dados de um usuário."""
-    db_user_check = crud.user.get_user(db, user_id=user_id)
-    if db_user_check is None:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-
-    try:
-        return crud.user.update_user(db, user_id=user_id, user_update=user_update)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro interno ao atualizar usuário: {e}")
+    db_user = crud_user.update_user(db, user_id=user_id, user_update=user_update)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado para atualização.")
+    return db_user
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
@@ -83,7 +70,8 @@ def delete_user(
     db: Session = Depends(get_db)
 ):
     """Apaga um usuário."""
-    db_user = crud.user.delete_user(db, user_id=user_id)
+    db_user = crud_user.delete_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado para exclusão.")
-    return None
+    # Retorna uma resposta vazia com status 204, como é a boa prática para DELETE.
+    return
