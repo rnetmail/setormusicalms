@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 35 18/07/2025 10:38
+# Versão 39 18/07/2025 10:55
 
 name: CI/CD - Testar, Construir e Implementar
 
@@ -8,21 +8,17 @@ on:
     branches:
       - main
 
-# O env global permanece para variáveis que não dependem de segredos.
 env:
   REGISTRY: ghcr.io
 
 jobs:
+  # A etapa de 'test' permanece a mesma, pois está a funcionar bem.
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Checkout do código
-        uses: actions/checkout@v4
-
-      - name: 2. Iniciar serviços com Docker Compose
-        run: docker compose up -d --build
-
-      - name: 3. Aguardar e Verificar a Saúde da API
+      - uses: actions/checkout@v4
+      - run: docker compose up -d --build
+      - name: Aguardar e Verificar a Saúde da API
         run: |
           echo "A aguardar que a API esteja pronta..."
           timeout=60
@@ -33,34 +29,20 @@ jobs:
               docker compose logs backend
               exit 1
             fi
-            echo "API ainda não está pronta. A aguardar 5 segundos..."
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
-          docker compose exec backend python init_admin.py
-
-      - name: 4. Configurar ambiente Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: 5. Instalar dependências Python e Playwright
+          docker compose exec backend python fastapi_backend/init_admin.py
+      - name: Instalar dependências e Executar Testes
         run: |
-          python -m pip install --upgrade pip
           pip install -r fastapi_backend/requirements.txt
           playwright install
-
-      - name: 6. Executar testes com Pytest
-        run: pytest fastapi_backend/
-      
-      - name: 7. Exibir logs do backend em caso de falha
-        if: failure()
-        run: docker compose logs backend
-
-      - name: 8. Parar os serviços após os testes
+          pytest fastapi_backend/
+      - name: Parar os serviços após os testes
         if: always()
         run: docker compose down
 
+  # A etapa de 'build_and_push' permanece a mesma.
   build_and_push:
     needs: test
     runs-on: ubuntu-latest
@@ -68,24 +50,20 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: 1. Checkout do código
-        uses: actions/checkout@v4
-
-      - name: 2. Login no GitHub Container Registry
+      - uses: actions/checkout@v4
+      - name: Login no GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 3. Build e Push da imagem do Backend
+      - name: Build e Push da imagem do Backend
         uses: docker/build-push-action@v5
         with:
           context: ./fastapi_backend
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/setormusicalms-backend:latest
-
-      - name: 4. Build e Push da imagem do Frontend
+      - name: Build e Push da imagem do Frontend
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -97,9 +75,6 @@ jobs:
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: prod
-    # CORREÇÃO: As variáveis que dependem de segredos são movidas para o escopo da job.
-    env:
-      PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
     steps:
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@master
@@ -109,16 +84,31 @@ jobs:
           password: ${{ secrets.VPS_SSH_PASS }}
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
-            echo ">> Acedendo ao diretório do projeto..."
-            cd ${{ env.PROJECT_PATH_ON_VPS }}
+            # CORREÇÃO: Usa 'set -e' para que o script pare imediatamente se um comando falhar.
+            set -e
+            
+            # CORREÇÃO: O caminho do projeto é definido diretamente e corretamente.
+            PROJECT_DIR="/home/setormusicalms/setormusical/setormusicalms"
+
+            echo ">> Acedendo ao diretório do projeto: $PROJECT_DIR"
+            cd $PROJECT_DIR
+            
             echo ">> Efetuando login no GitHub Container Registry..."
-            echo ${{ secrets.GIT_PAT }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            echo ${{ secrets.GIT_PAT }} | sudo docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            
             echo ">> Puxando as imagens mais recentes..."
-            docker compose pull
+            sudo docker compose pull
+            
             echo ">> Reiniciando os serviços..."
-            docker compose up -d
+            sudo docker compose up -d
+            
+            echo ">> Aguardando os contentores estabilizarem..."
+            sleep 10
+            
             echo ">> Inicializando o banco de dados e o admin..."
-            docker compose exec backend python init_admin.py
+            sudo docker compose exec backend python fastapi_backend/init_admin.py
+            
             echo ">> Limpando imagens Docker antigas..."
-            docker image prune -af
+            sudo docker image prune -af
+            
             echo ">> ✅ Deploy finalizado com sucesso!"
