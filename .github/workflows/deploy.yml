@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 83 18/07/2025 09:48
+# Versão 33 18/07/2025 08:28
 
 name: CI/CD - Testar, Construir e Implementar
 
@@ -28,7 +28,6 @@ jobs:
         run: |
           echo "A aguardar que a API esteja pronta..."
           timeout=60
-          # CORREÇÃO: Verifica a porta correta do backend (8000).
           while ! curl -sSf http://localhost:8000/api/health; do
             timeout=$((timeout - 5))
             if [ $timeout -le 0 ]; then
@@ -99,6 +98,9 @@ jobs:
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
+    # CORREÇÃO: Adiciona a definição do ambiente para a etapa de deploy.
+    # Isto permite que o workflow aceda aos segredos configurados para o ambiente 'prod'.
+    environment: prod
     steps:
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@master
