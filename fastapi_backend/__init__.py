@@ -1,5 +1,5 @@
 # fastapi_backend/init_admin.py
-# Versão 89 18/07/2025 10:15
+# Versão 90 18/07/2025 10:20
 import sys
 import os
 
