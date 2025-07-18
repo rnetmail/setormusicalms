@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 33 18/07/2025 08:28
+# Versão 35 18/07/2025 10:38
 
 name: CI/CD - Testar, Construir e Implementar
 
@@ -8,11 +8,9 @@ on:
     branches:
       - main
 
+# O env global permanece para variáveis que não dependem de segredos.
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
-  IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
-  PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
 
 jobs:
   test:
@@ -85,7 +83,7 @@ jobs:
         with:
           context: ./fastapi_backend
           push: true
-          tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
+          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/setormusicalms-backend:latest
 
       - name: 4. Build e Push da imagem do Frontend
         uses: docker/build-push-action@v5
@@ -93,14 +91,15 @@ jobs:
           context: .
           dockerfile: Dockerfile
           push: true
-          tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
+          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/setormusicalms-frontend:latest
 
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    # CORREÇÃO: Adiciona a definição do ambiente para a etapa de deploy.
-    # Isto permite que o workflow aceda aos segredos configurados para o ambiente 'prod'.
     environment: prod
+    # CORREÇÃO: As variáveis que dependem de segredos são movidas para o escopo da job.
+    env:
+      PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
     steps:
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@master
