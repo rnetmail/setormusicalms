@@ -1,33 +1,26 @@
 # fastapi_backend/auth/password.py
-# Versão 04 17/07/2025 16:40
+# Versão 01 17/07/2025 23:30
 from passlib.context import CryptContext
 
-# Define o contexto de criptografia, especificando o algoritmo 'bcrypt' como padrão.
-# 'deprecated="auto"' instrui o passlib a atualizar automaticamente os hashes se
-# um esquema mais novo for adicionado no futuro.
+# Cria um contexto para o hashing de senhas, especificando o algoritmo bcrypt.
+# O bcrypt é o padrão de mercado para armazenamento seguro de senhas.
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verifica se uma senha em texto plano corresponde à sua versão hasheada.
 
-    Args:
-        plain_password: A senha a ser verificada.
-        hashed_password: O hash da senha armazenado no banco de dados.
-
-    Returns:
-        True se as senhas correspondem, False caso contrário.
+    :param plain_password: A senha fornecida pelo usuário.
+    :param hashed_password: A senha armazenada no banco de dados.
+    :return: True se as senhas corresponderem, False caso contrário.
     """
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
     """
-    Gera o hash de uma senha em texto plano usando o contexto definido.
+    Gera o hash de uma senha em texto plano usando bcrypt.
 
-    Args:
-        password: A senha a ser hasheada.
-
-    Returns:
-        O hash da senha.
+    :param password: A senha a ser hasheada.
+    :return: O hash da senha.
     """
     return pwd_context.hash(password)
