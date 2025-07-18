@@ -1,21 +1,22 @@
 # docker-compose.yml
-# Versão 34 18/07/2025 09:16
+# Versão 45 18/07/2025 11:30
 services:
   # Serviço do Backend FastAPI
   backend:
     build: ./fastapi_backend
     container_name: setormusicalms-backend
-    # Em produção, removemos o --reload para melhor performance.
+    # Em produção, o --reload é removido para melhor performance e estabilidade.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
+      # O volume do código é mantido para facilitar o debug, mas pode ser removido
+      # se a imagem já contiver a versão final do código.
       - ./fastapi_backend:/app
       - sqlite_data:/app/data
     ports:
       - "8000:8000"
     environment:
-      # As variáveis de ambiente devem ser configuradas para produção, se necessário.
+      # Em produção, estes valores seriam idealmente geridos por um sistema de segredos.
       - DATABASE_URL=sqlite:///data/setormusical.db
-      - SECRET_KEY=${SECRET_KEY} # Exemplo de como usar secrets no compose
     restart: unless-stopped
 
   # Serviço do Frontend (React) servido pelo Nginx
@@ -26,8 +27,8 @@ services:
     container_name: setormusicalms-frontend
     ports:
       # CORREÇÃO CRÍTICA: Mapeia a porta 3000 do host para a porta 80 do contentor,
-      # onde o Nginx está realmente a ouvir.
-      - "3000:3000"
+      # que é a porta onde o Nginx está a escutar.
+      - "3000:80"
     depends_on:
       - backend
     restart: unless-stopped
