@@ -1,22 +1,21 @@
 # fastapi_backend/init_admin.py
-# Versão 91 18/07/2025 10:25
-import sys
-import os
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
+# Versão 19 18/07/2025 00:08
 from app.database import SessionLocal, engine, Base
 from models.user import User
-# CORREÇÃO: Importa a função do novo ficheiro 'auth/password.py'.
 from auth.password import get_password_hash
+
+# Importa todos os modelos para garantir que sejam conhecidos pelo SQLAlchemy
+# antes de criar as tabelas.
 from models import repertorio, agenda, recado
 
 def create_database_and_tables():
+    """Cria o arquivo do banco de dados e todas as tabelas, se não existirem."""
     print("A criar tabelas...")
     Base.metadata.create_all(bind=engine)
     print("✅ Tabelas criadas com sucesso!")
 
 def create_admin_user():
+    """Cria o usuário 'admin' com permissões de superusuário se ele não existir."""
     db = SessionLocal()
     try:
         admin_username = "admin"
@@ -40,7 +39,7 @@ def create_admin_user():
             db.commit()
             print("✅ Usuário admin criado!")
         else:
-            print(f"Usuário '{admin_username}' já existe.")
+            print(f"Usuário '{admin_username}' já existe, nenhuma ação necessária.")
         
     except Exception as e:
         print(f"❌ Erro ao criar/verificar o usuário admin: {e}")
