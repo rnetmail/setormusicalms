@@ -1,55 +1,71 @@
-# fastapi_backend/README.md
-# Versão 81 18/07/2025 09:42
+# fastapi_backend/crud/repertorio.py
+# Versão 86 18/07/2025 10:22
+from sqlalchemy.orm import Session
+from typing import List, Optional
 
-# Setor Musical MS - API e Frontend
+# CORREÇÃO: As importações agora apontam para os pacotes corretos na raiz.
+from models.repertorio import RepertorioItem
+from schemas.repertorio import RepertorioItemCreate, RepertorioItemUpdate
+from utils.media_converter import process_media_urls
 
-Este projeto contém uma aplicação web completa com um backend FastAPI e um frontend React.
+def get_repertorio_item(db: Session, item_id: int) -> Optional[RepertorioItem]:
+    """Busca um item de repertório específico pelo ID."""
+    return db.query(RepertorioItem).filter(RepertorioItem.id == item_id).first()
 
-## Visão Geral da Arquitetura
+def get_repertorio_items(
+    db: Session, 
+    skip: int = 0, 
+    limit: int = 100, 
+    type_filter: Optional[str] = None,
+    active_only: bool = True
+) -> List[RepertorioItem]:
+    """
+    Lista itens do repertório com filtros opcionais para tipo e status (ativo/inativo).
+    Os resultados são ordenados por ano (mais recente primeiro) e depois por título.
+    """
+    query = db.query(RepertorioItem)
+    
+    if type_filter:
+        query = query.filter(RepertorioItem.type == type_filter)
+    
+    if active_only:
+        query = query.filter(RepertorioItem.active == True)
+    
+    return query.order_by(RepertorioItem.year.desc(), RepertorioItem.title).offset(skip).limit(limit).all()
 
-- **Backend:** Uma API RESTful construída com **FastAPI**, servindo dados a partir de um banco de dados **SQLite**.
-- **Frontend:** Uma Single-Page Application (SPA) construída com **React** e **TypeScript**.
-- **Containerização:** A aplicação inteira é containerizada usando **Docker** e orquestrada com **Docker Compose**.
-- **Servidor Web:** O **Nginx** é usado como servidor web para o frontend React e como proxy reverso para a API FastAPI.
+def create_repertorio_item(db: Session, item: RepertorioItemCreate) -> RepertorioItem:
+    """Cria um novo item de repertório, processando as URLs de mídia antes de salvar."""
+    item_data = item.model_dump()
+    
+    processed_data = process_media_urls(item_data)
+    
+    db_item = RepertorioItem(**processed_data)
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
 
-## Estrutura de Pastas
+def update_repertorio_item(db: Session, item_id: int, item_update: RepertorioItemUpdate) -> Optional[RepertorioItem]:
+    """Atualiza um item de repertório, processando as URLs de mídia se forem alteradas."""
+    db_item = db.query(RepertorioItem).filter(RepertorioItem.id == item_id).first()
+    if not db_item:
+        return None
+    
+    update_data = item_update.model_dump(exclude_unset=True)
+    
+    processed_update_data = process_media_urls(update_data)
+    
+    for field, value in processed_update_data.items():
+        setattr(db_item, field, value)
+    
+    db.commit()
+    db.refresh(db_item)
+    return db_item
 
-- `fastapi_backend/`: Contém todo o código-fonte da API FastAPI.
-  - `app/`: Onde a aplicação FastAPI e os seus routers são definidos.
-  - `models/`: Contém os modelos de dados do SQLAlchemy.
-  - `schemas/`: Contém os schemas de validação de dados do Pydantic.
-  - `crud/`: Contém a lógica de acesso ao banco de dados (Create, Read, Update, Delete).
-- `src/` (ou raiz): Contém o código-fonte do frontend React.
-- `docker-compose.yml`: Define os serviços, redes e volumes do Docker.
-- `Dockerfile`: Usado para construir a imagem do frontend.
-- `fastapi_backend/Dockerfile`: Usado para construir a imagem do backend.
-
-## Rodando Localmente
-
-**Pré-requisitos:**
-- Docker
-- Docker Compose v2
-
-**Passos:**
-
-1.  **Construir e Iniciar os Contentores:**
-    Na raiz do projeto, execute:
-    ```bash
-    docker compose up --build -d
-    ```
-
-2.  **Inicializar o Banco de Dados (Apenas na primeira vez):**
-    Para criar as tabelas e o usuário administrador padrão, execute:
-    ```bash
-    docker compose exec backend python init_admin.py
-    ```
-
-3.  **Aceder à Aplicação:**
-    - **Frontend:** [http://localhost:3000](http://localhost:3000)
-    - **Backend (API Docs):** [http://localhost:8000/docs](http://localhost:8000/docs)
-
-## Rodando os Testes
-
-Para executar a suíte de testes automatizados, use o seguinte comando:
-```bash
-docker compose exec backend pytest
+def delete_repertorio_item(db: Session, item_id: int) -> Optional[RepertorioItem]:
+    """Remove um item de repertório do banco de dados."""
+    db_item = db.query(RepertorioItem).filter(RepertorioItem.id == item_id).first()
+    if db_item:
+        db.delete(db_item)
+        db.commit()
+    return db_item
