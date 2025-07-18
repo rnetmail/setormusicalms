@@ -6,6 +6,7 @@ from .repertorio import RepertorioItem, RepertorioItemCreate, RepertorioItemUpda
 from .agenda import AgendaItem, AgendaItemCreate, AgendaItemUpdate
 from .recado import RecadoItem, RecadoItemCreate, RecadoItemUpdate
 
+# A linha __all__ define o que é exportado quando alguém faz 'from schemas import *'
 __all__ = [
     "User", "UserCreate", "UserUpdate", "Token", "TokenData",
     "RepertorioItem", "RepertorioItemCreate", "RepertorioItemUpdate",
