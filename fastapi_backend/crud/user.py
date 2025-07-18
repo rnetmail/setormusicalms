@@ -1,11 +1,10 @@
 # fastapi_backend/crud/user.py
-# Versão 09 17/07/2025 23:54
+# Versão 21 18/07/2025 00:12
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from models.user import User
 from schemas.user import UserCreate, UserUpdate
-# CORREÇÃO: Importa as funções de senha do novo módulo dedicado 'auth.password'.
 from auth.password import get_password_hash, verify_password
 
 def get_user(db: Session, user_id: int) -> Optional[User]:
@@ -47,7 +46,6 @@ def update_user(db: Session, user_id: int, user_update: UserUpdate) -> Optional[
     db_user = db.query(User).filter(User.id == user_id).first()
     if db_user:
         update_data = user_update.model_dump(exclude_unset=True)
-        # Se uma nova senha for fornecida, gera um novo hash.
         if "password" in update_data and update_data["password"]:
             update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
         
@@ -67,4 +65,13 @@ def delete_user(db: Session, user_id: int) -> Optional[User]:
     return db_user
 
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
-    """Autentica um usuário
+    """
+    Autentica um usuário, verificando o username e a senha.
+    Retorna o objeto do usuário se as credenciais forem válidas, caso contrário None.
+    """
+    user = get_user_by_username(db, username)
+    if not user:
+        return None
+    if not verify_password(password, user.hashed_password):
+        return None
+    return user
