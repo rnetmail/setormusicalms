@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 40 18/07/2025 10:58
+# Versão 41 18/07/2025 11:05
 
 name: CI/CD - Testar, Construir e Implementar
 
@@ -31,7 +31,6 @@ jobs:
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
-          # CORREÇÃO: O caminho para o script dentro do contentor é /app/init_admin.py
           docker compose exec backend python /app/init_admin.py
       - name: Instalar dependências e Executar Testes
         run: |
@@ -90,22 +89,22 @@ jobs:
             cd ${{ env.PROJECT_PATH_ON_VPS }}
             
             echo ">> Efetuando login no GitHub Container Registry..."
-            echo ${{ secrets.GIT_PAT }} | sudo docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            # CORREÇÃO: Removido 'sudo' de todos os comandos docker
+            echo ${{ secrets.GIT_PAT }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
             
             echo ">> Puxando as imagens mais recentes..."
-            sudo docker compose pull
+            docker compose pull
             
             echo ">> Reiniciando os serviços..."
-            sudo docker compose up -d
+            docker compose up -d
             
             echo ">> Aguardando os contentores estabilizarem..."
             sleep 10
             
             echo ">> Inicializando o banco de dados e o admin..."
-            # CORREÇÃO: O caminho para o script dentro do contentor é /app/init_admin.py
-            sudo docker compose exec backend python /app/init_admin.py
+            docker compose exec backend python /app/init_admin.py
             
             echo ">> Limpando imagens Docker antigas..."
-            sudo docker image prune -af
+            docker image prune -af
             
             echo ">> ✅ Deploy finalizado com sucesso!"
