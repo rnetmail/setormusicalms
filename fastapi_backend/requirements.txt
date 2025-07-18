@@ -1,10 +1,12 @@
 # fastapi_backend/requirements.txt
-# Versão 28 18/07/2025 00:28
+# Versão 43 18/07/2025 11:15
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 sqlalchemy==2.0.30
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+# CORREÇÃO: Fixa a versão do bcrypt para garantir a compatibilidade com a passlib.
+bcrypt==3.2.2
 python-multipart>=0.0.7
 pydantic==2.5.0
 pydantic-settings==2.2.1
@@ -17,5 +19,4 @@ pytest-asyncio==0.21.1
 httpx==0.27.0
 requests==2.32.3
 playwright==1.40.0
-# ADICIONADO: Plugin de integração para o Pytest com Playwright
 pytest-playwright==0.4.4
