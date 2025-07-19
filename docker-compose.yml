@@ -1,5 +1,5 @@
 # docker-compose.yml
-# Versão 49 19/07/2025 13:30
+# Versão 52 19/07/2025 13:50
 
 services:
   # Serviço do Backend FastAPI
@@ -11,8 +11,12 @@ services:
       - ./fastapi_backend:/app
       - sqlite_data:/app/data
     ports:
-      # O backend continua a expor a porta 8000 para a API
       - "8000:8000"
+    # CORREÇÃO FINAL: Define explicitamente a variável de ambiente DENTRO da
+    # configuração do serviço. Isto garante que o contentor SEMPRE usará
+    # o SQLite, ignorando quaisquer variáveis externas que possam existir.
+    environment:
+      - DATABASE_URL=sqlite:///data/setormusical.db
     restart: unless-stopped
 
   # Serviço do Frontend (React) servido pelo Nginx
@@ -22,9 +26,6 @@ services:
       dockerfile: Dockerfile
     container_name: setormusicalms-frontend
     ports:
-      # CORREÇÃO: Mapeia a porta 80 do host para a porta 80 do contentor.
-      # Isto permite que o Nginx automatizado da VPS encontre a aplicação
-      # diretamente na porta padrão de HTTP.
       - "80:80"
     depends_on:
       - backend
