@@ -1,7 +1,7 @@
 # .github/workflows/deploy.yml
-# Versão 44 18/07/2025 11:25
+# Versão 57 19/07/2025 18:45
 
-name: CI/CD - Testar, Construir e Implementar
+name: CI/CD - Testar, Construir, Implementar e Validar
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
-          docker compose exec backend python /app/init_admin.py
+          docker compose exec setormusicalms-backend python /app/init_admin.py
       - name: Instalar dependências e Executar Testes
         run: |
           pip install -r fastapi_backend/requirements.txt
@@ -73,8 +73,6 @@ jobs:
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: prod
-    env:
-      PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusical/setormusicalms
     steps:
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@master
@@ -83,29 +81,41 @@ jobs:
           username: ${{ secrets.VPS_SSH_USER }}
           password: ${{ secrets.VPS_SSH_PASS }}
           port: ${{ secrets.VPS_SSH_PORT }}
-          # CORREÇÃO: Usa o block scalar '|' para garantir que o script multilinhas
-          # seja interpretado corretamente.
           script: |
             set -e
-            echo ">> Acedendo ao diretório do projeto: ${{ env.PROJECT_PATH_ON_VPS }}"
-            cd ${{ env.PROJECT_PATH_ON_VPS }}
-            
-            echo ">> Efetuando login no GitHub Container Registry..."
+            PROJECT_DIR="/home/${{ secrets.VPS_SSH_USER }}/setormusical/setormusicalms"
+            cd $PROJECT_DIR
             echo ${{ secrets.GIT_PAT }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-            
-            echo ">> Puxando as imagens mais recentes..."
             docker compose pull
-            
-            echo ">> Reiniciando os serviços..."
             docker compose up -d
-            
-            echo ">> Aguardando os contentores estabilizarem..."
-            sleep 10
-            
-            echo ">> Inicializando o banco de dados e o admin..."
-            docker compose exec backend python /app/init_admin.py
-            
-            echo ">> Limpando imagens Docker antigas..."
+            sleep 15
+            docker compose exec setormusicalms-backend python /app/init_admin.py
             docker image prune -af
-            
-            echo ">> ✅ Deploy finalizado com sucesso!"
+            echo "✅ Deploy finalizado com sucesso!"
+
+  # --- [NOVO] ETAPA DE VALIDAÇÃO PÓS-DEPLOY ---
+  validate:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Aguardar a inicialização dos serviços na VPS
+        run: |
+          echo "A aguardar 30 segundos para os serviços estabilizarem..."
+          sleep 30
+
+      - name: 2. Validar o endpoint do Frontend
+        run: |
+          echo "A verificar o URL do Frontend: https://setormusicalms.art.br/"
+          # O comando falhará se o curl não receber um status 200 ou se o título não for encontrado.
+          curl -sSf https://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
+          echo "✅ O Frontend está online e a servir o conteúdo correto."
+
+      - name: 3. Validar o endpoint do Backend (Health Check)
+        run: |
+          echo "A verificar o URL do Backend: https://setormusicalms.art.br/api/health"
+          # O comando falhará se o curl não receber um status 200 ou se a resposta não for a esperada.
+          curl -sSf https://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
+          echo "✅ O Backend está online e a responder corretamente."
+
+      - name: 🚀 Validação Finalizada
+        run: echo "A aplicação foi implantada e validada com sucesso!"
