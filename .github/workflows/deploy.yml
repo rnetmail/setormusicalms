@@ -1,117 +1,31 @@
-# .github/workflows/deploy.yml
-# Versão 58 19/07/2025 18:50
+# docker-compose.yml
+# Versão 55 19/07/2025 18:40
+services:
+  backend:
+    build: ./fastapi_backend
+    container_name: setormusicalms-backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./fastapi_backend:/app
+      - sqlite_data:/app/data
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///data/setormusical.db
+    restart: unless-stopped
 
-name: CI/CD - Testar, Construir, Implementar e Validar
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: setormusicalms-frontend
+    ports:
+      # Expõe a porta 80 do host para a porta 80 do contentor,
+      # permitindo que o Nginx da VPS o encontre.
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
-on:
-  push:
-    branches:
-      - main
-
-env:
-  REGISTRY: ghcr.io
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker compose up -d --build
-      - name: Aguardar, Verificar Saúde e Inicializar DB
-        run: |
-          echo "A aguardar que a API esteja pronta..."
-          timeout=60
-          while ! curl -sSf http://localhost:8000/api/health; do
-            timeout=$((timeout - 5))
-            if [ $timeout -le 0 ]; then
-              echo "A API não ficou pronta em 60 segundos."
-              docker compose logs backend
-              exit 1
-            fi
-            sleep 5
-          done
-          echo "✅ API está pronta e a responder!"
-          # CORREÇÃO: Usa o nome do serviço 'backend' como definido no docker-compose.yml
-          docker compose exec backend python /app/init_admin.py
-      - name: Instalar dependências e Executar Testes
-        run: |
-          pip install -r fastapi_backend/requirements.txt
-          playwright install
-          pytest fastapi_backend/
-      - name: Parar os serviços após os testes
-        if: always()
-        run: docker compose down
-
-  build_and_push:
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Login no GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build e Push da imagem do Backend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./fastapi_backend
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/setormusicalms-backend:latest
-      - name: Build e Push da imagem do Frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          dockerfile: Dockerfile
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/setormusicalms-frontend:latest
-
-  deploy:
-    needs: build_and_push
-    runs-on: ubuntu-latest
-    environment: prod
-    steps:
-      - name: Deploy na VPS via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_SSH_USER }}
-          password: ${{ secrets.VPS_SSH_PASS }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          script: |
-            set -e
-            PROJECT_DIR="/home/${{ secrets.VPS_SSH_USER }}/setormusical/setormusicalms"
-            cd $PROJECT_DIR
-            echo ${{ secrets.GIT_PAT }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-            docker compose pull
-            docker compose up -d
-            sleep 15
-            # CORREÇÃO: Usa o nome do serviço 'backend' como definido no docker-compose.yml
-            docker compose exec backend python /app/init_admin.py
-            docker image prune -af
-            echo "✅ Deploy finalizado com sucesso!"
-
-  validate:
-    needs: deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: 1. Aguardar a inicialização dos serviços na VPS
-        run: |
-          echo "A aguardar 30 segundos para os serviços estabilizarem..."
-          sleep 30
-      - name: 2. Validar o endpoint do Frontend
-        run: |
-          echo "A verificar o URL do Frontend: https://setormusicalms.art.br/"
-          curl -sSf https://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
-          echo "✅ O Frontend está online e a servir o conteúdo correto."
-      - name: 3. Validar o endpoint do Backend (Health Check)
-        run: |
-          echo "A verificar o URL do Backend: https://setormusicalms.art.br/api/health"
-          curl -sSf https://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
-          echo "✅ O Backend está online e a responder corretamente."
-      - name: 🚀 Validação Finalizada
-        run: echo "A aplicação foi implantada e validada com sucesso!"
+volumes:
+  sqlite_data:
