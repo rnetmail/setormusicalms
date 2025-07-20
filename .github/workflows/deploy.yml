@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 57 19/07/2025 18:45
+# Versão 58 19/07/2025 18:50
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -31,7 +31,8 @@ jobs:
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
-          docker compose exec setormusicalms-backend python /app/init_admin.py
+          # CORREÇÃO: Usa o nome do serviço 'backend' como definido no docker-compose.yml
+          docker compose exec backend python /app/init_admin.py
       - name: Instalar dependências e Executar Testes
         run: |
           pip install -r fastapi_backend/requirements.txt
@@ -89,11 +90,11 @@ jobs:
             docker compose pull
             docker compose up -d
             sleep 15
-            docker compose exec setormusicalms-backend python /app/init_admin.py
+            # CORREÇÃO: Usa o nome do serviço 'backend' como definido no docker-compose.yml
+            docker compose exec backend python /app/init_admin.py
             docker image prune -af
             echo "✅ Deploy finalizado com sucesso!"
 
-  # --- [NOVO] ETAPA DE VALIDAÇÃO PÓS-DEPLOY ---
   validate:
     needs: deploy
     runs-on: ubuntu-latest
@@ -102,20 +103,15 @@ jobs:
         run: |
           echo "A aguardar 30 segundos para os serviços estabilizarem..."
           sleep 30
-
       - name: 2. Validar o endpoint do Frontend
         run: |
           echo "A verificar o URL do Frontend: https://setormusicalms.art.br/"
-          # O comando falhará se o curl não receber um status 200 ou se o título não for encontrado.
           curl -sSf https://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
           echo "✅ O Frontend está online e a servir o conteúdo correto."
-
       - name: 3. Validar o endpoint do Backend (Health Check)
         run: |
           echo "A verificar o URL do Backend: https://setormusicalms.art.br/api/health"
-          # O comando falhará se o curl não receber um status 200 ou se a resposta não for a esperada.
           curl -sSf https://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
           echo "✅ O Backend está online e a responder corretamente."
-
       - name: 🚀 Validação Finalizada
         run: echo "A aplicação foi implantada e validada com sucesso!"
