@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 61 21/07/2025 18:45
+# Versão 62 21/07/2025 19:40
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -99,6 +99,7 @@ jobs:
             cd $PROJECT_DIR
 
             echo ">>> Efetuando login no GitHub Container Registry..."
+            # CORREÇÃO: Usando o método recomendado para login não-interativo
             echo $GIT_PAT | docker login $REGISTRY -u $GITHUB_ACTOR --password-stdin
             
             echo ">>> Limpando imagens Docker antigas..."
@@ -110,7 +111,6 @@ jobs:
             echo ">>> Verificando o hash da imagem do backend..."
             LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest)
             
-            # Extrai apenas o hash
             LOCAL_BACKEND_HASH=$(echo $LOCAL_BACKEND_DIGEST | cut -d'@' -f2)
             EXPECTED_BACKEND_HASH=$(echo $EXPECTED_BACKEND_DIGEST | cut -d'@' -f2)
 
