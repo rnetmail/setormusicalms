@@ -1,15 +1,14 @@
 # fastapi_backend/app/main.py
-# Versão 18 18/07/2025 00:06
+# Versão 19 21/07/2025 11:00
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 
 # Importações absolutas da estrutura do projeto
 from app.database import engine, Base
 from app.config import settings
-from app.routers import auth, users, repertorio, agenda, recados
+from app.routers import auth, users, repertorio, agenda, recados, historia
 
 # Cria todas as tabelas no banco de dados se não existirem.
-# Em um ambiente de produção, é mais robusto usar um sistema de migrações como o Alembic.
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -18,8 +17,7 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Configura o CORS (Cross-Origin Resource Sharing) a partir das configurações.
-# Isso é essencial para permitir que o frontend (em outro domínio/porta) acesse a API.
+# Configura o CORS (Cross-Origin Resource Sharing)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -28,16 +26,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Cria um router principal para organizar todos os endpoints sob o prefixo /api.
-# Esta é uma boa prática para versionamento e clareza da API.
+# Cria um router principal para organizar todos os endpoints sob o prefixo /api
 api_router = APIRouter(prefix="/api")
 
-# Inclui os routers de cada módulo na API principal.
+# Inclui os routers de cada módulo na API principal
 api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(repertorio.router)
 api_router.include_router(agenda.router)
 api_router.include_router(recados.router)
+api_router.include_router(historia.router) # <-- NOVA LINHA ADICIONADA
 
 @api_router.get("/health", tags=["Health Check"])
 def health_check():
