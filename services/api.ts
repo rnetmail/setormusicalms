@@ -1,12 +1,12 @@
 // services/api.ts
-// Versão 02 16/07/2025 20:23
-import { RepertorioItem, AgendaItem, RecadoItem, User, GroupType } from '../types';
+// Versão 03 21/07/2025 18:20
+import { RepertorioItem, AgendaItem, RecadoItem, User, GroupType, HistoriaItem, GaleriaItem } from '../types';
 
 const API_BASE_URL = '/api';
 
 const getAuthToken = () => sessionStorage.getItem('authToken');
 
-// Função base para todas as requisições à API, agora mais robusta
+// Função base para todas as requisições à API
 const apiFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
     const headers: HeadersInit = {
@@ -18,21 +18,18 @@ const apiFetch = async (url: string, options: RequestInit = {}) => {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // O request é feito para o URL base da API + o endpoint específico.
-    // Ex: /api/repertorio
     const response = await fetch(`${API_BASE_URL}${url}`, {
         ...options,
         headers,
     });
 
-    if (response.status === 204) { // No Content, usado em DELETE
+    if (response.status === 204) { // No Content
         return null;
     }
 
     const responseData = await response.json();
 
     if (!response.ok) {
-        // Extrai a mensagem de erro do detalhe do FastAPI
         const errorMessage = responseData.detail || JSON.stringify(responseData);
         throw new Error(errorMessage || 'Ocorreu um erro na API');
     }
@@ -40,12 +37,14 @@ const apiFetch = async (url: string, options: RequestInit = {}) => {
     return responseData;
 };
 
-// --- Funções Públicas (não autenticadas) ---
-export const getRepertorio = (type: GroupType) => apiFetch(`/repertorio?type_filter=${type}`);
-export const getAgenda = (group: GroupType) => apiFetch(`/agenda?group_filter=${group}`);
-export const getRecados = (group: GroupType) => apiFetch(`/recados?group_filter=${group}`);
-export const getHistoria = async (): Promise<any[]> => Promise.resolve([]); // Mock
-export const getGaleria = async (): Promise<any[]> => Promise.resolve([]); // Mock
+// --- Funções Públicas ---
+export const getRepertorio = (type: GroupType): Promise<RepertorioItem[]> => apiFetch(`/repertorio?type_filter=${type}`);
+export const getAgenda = (group: GroupType): Promise<AgendaItem[]> => apiFetch(`/agenda?group_filter=${group}`);
+export const getRecados = (group: GroupType): Promise<RecadoItem[]> => apiFetch(`/recados?group_filter=${group}`);
+// ATUALIZADO: Funções agora fazem chamadas reais à API
+export const getHistoria = (): Promise<HistoriaItem[]> => apiFetch('/historia/');
+export const getGaleria = (group: GroupType): Promise<GaleriaItem[]> => apiFetch(`/galeria/${group}`);
+
 
 // --- Funções de Autenticação ---
 export const login = async (username: string, pass: string) => {
@@ -54,7 +53,6 @@ export const login = async (username: string, pass: string) => {
     formData.append('password', pass);
 
     try {
-        // CORREÇÃO: O endpoint de login é '/auth/login', e não '/auth/token'.
         const response = await fetch(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -78,7 +76,6 @@ export const login = async (username: string, pass: string) => {
 
 export const logout = () => {
     sessionStorage.removeItem('authToken');
-    // A navegação será feita no AuthContext
 };
 
 // --- Funções Genéricas de Admin (CRUD) ---
