@@ -1,11 +1,11 @@
 # fastapi_backend/app/routers/galeria.py
-# Versão 01 21/07/2025 18:14
+# Versão 02 21/07/2025 19:25
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from auth.security import get_current_staff_user
+from auth.security import get_current_staff_user, get_current_active_user
 from crud import galeria as crud_galeria
 from models import user as model_user
 from schemas import galeria as schema_galeria
@@ -14,7 +14,8 @@ router = APIRouter(prefix="/galeria", tags=["Galeria"])
 
 @router.get("/{group}", response_model=List[schema_galeria.GaleriaItem])
 def read_galeria_items_by_group(
-    group: str = Query(..., description="Filtrar por grupo: Coral ou Orquestra"),
+    # CORREÇÃO: Alterado de Query para Path, pois "group" é um parâmetro de caminho na URL.
+    group: str = Path(..., description="Filtrar por grupo: Coral ou Orquestra"),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
