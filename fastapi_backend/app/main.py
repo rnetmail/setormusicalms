@@ -1,12 +1,12 @@
 # fastapi_backend/app/main.py
-# Versão 19 21/07/2025 11:00
+# Versão 20 21/07/2025 18:15
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 
 # Importações absolutas da estrutura do projeto
 from app.database import engine, Base
 from app.config import settings
-from app.routers import auth, users, repertorio, agenda, recados, historia
+from app.routers import auth, users, repertorio, agenda, recados, historia, galeria
 
 # Cria todas as tabelas no banco de dados se não existirem.
 Base.metadata.create_all(bind=engine)
@@ -35,7 +35,8 @@ api_router.include_router(users.router)
 api_router.include_router(repertorio.router)
 api_router.include_router(agenda.router)
 api_router.include_router(recados.router)
-api_router.include_router(historia.router) # <-- NOVA LINHA ADICIONADA
+api_router.include_router(historia.router)
+api_router.include_router(galeria.router) # <-- NOVA LINHA ADICIONADA
 
 @api_router.get("/health", tags=["Health Check"])
 def health_check():
