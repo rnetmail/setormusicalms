@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 63 21/07/2025 19:48
+# Versão 65 21/07/2025 20:15
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -22,11 +22,11 @@ jobs:
       - name: Aguardar, Verificar Saúde e Inicializar DB
         run: |
           echo "A aguardar que a API esteja pronta..."
-          timeout=60
+          timeout=90
           while ! curl -sSf http://localhost:8000/api/health; do
             timeout=$((timeout - 5))
             if [ $timeout -le 0 ]; then
-              echo "A API não ficou pronta em 60 segundos."
+              echo "A API não ficou pronta em 90 segundos."
               docker compose logs backend
               exit 1
             fi
@@ -97,38 +97,27 @@ jobs:
             set -e
             echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
-
             echo ">>> Efetuando login no GitHub Container Registry..."
-            # CORREÇÃO FINAL: Usando a flag --password para login não-interativo.
-            docker login $REGISTRY -u $GITHUB_ACTOR --password $GIT_PAT
-            
+            echo $GIT_PAT | docker login $REGISTRY -u $GITHUB_ACTOR --password-stdin
             echo ">>> Limpando imagens Docker antigas..."
             docker image prune -af
-
             echo ">>> Puxando as imagens mais recentes..."
             docker compose pull
-            
             echo ">>> Verificando o hash da imagem do backend..."
             LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest)
-            
             LOCAL_BACKEND_HASH=$(echo $LOCAL_BACKEND_DIGEST | cut -d'@' -f2)
             EXPECTED_BACKEND_HASH=$(echo $EXPECTED_BACKEND_DIGEST | cut -d'@' -f2)
-
             if [ "$LOCAL_BACKEND_HASH" != "$EXPECTED_BACKEND_HASH" ]; then
               echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_HASH) não corresponde ao esperado ($EXPECTED_BACKEND_HASH)."
               exit 1
             fi
             echo "✅ Verificação de hash bem-sucedida."
-
             echo ">>> Reiniciando os serviços..."
             docker compose up -d
-            
             echo ">>> Aguardando os contêineres..."
             sleep 15
-            
             echo ">>> Inicializando banco de dados..."
             docker compose exec backend python /app/init_admin.py
-            
             echo "✅ Deploy finalizado com sucesso!"
 
   validate:
@@ -142,12 +131,12 @@ jobs:
       - name: 2. Validar o endpoint do Frontend
         run: |
           echo "A verificar o URL do Frontend: http://setormusicalms.art.br/"
-          curl -sSf http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
+          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
           echo "✅ O Frontend está online e a servir o conteúdo correto."
       - name: 3. Validar o endpoint do Backend (Health Check)
         run: |
           echo "A verificar o URL do Backend: http://setormusicalms.art.br/api/health"
-          curl -sSf http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
+          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
           echo "✅ O Backend está online e a responder corretamente."
       - name: 🚀 Validação Finalizada
         run: echo "A aplicação foi implantada e validada com sucesso!"
