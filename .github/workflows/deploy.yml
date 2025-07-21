@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 58 19/07/2025 18:50
+# Versão 59 21/07/2025 14:15
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -31,7 +31,6 @@ jobs:
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
-          # CORREÇÃO: Usa o nome do serviço 'backend' como definido no docker-compose.yml
           docker compose exec backend python /app/init_admin.py
       - name: Instalar dependências e Executar Testes
         run: |
@@ -75,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - name: Deploy na VPS via SSH
+      - name: Deploy e Verificação na VPS
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -85,14 +84,41 @@ jobs:
           script: |
             set -e
             PROJECT_DIR="/home/${{ secrets.VPS_SSH_USER }}/setormusical/setormusicalms"
+            EXPECTED_COMMIT_HASH="${{ github.sha }}"
+
+            echo ">>> Acedendo ao diretório do projeto..."
             cd $PROJECT_DIR
+
+            echo ">>> Atualizando repositório..."
+            git pull origin main
+
+            echo ">>> Verificando a versão do código..."
+            CURRENT_COMMIT_HASH=$(git rev-parse HEAD)
+            
+            if [ "$CURRENT_COMMIT_HASH" != "$EXPECTED_COMMIT_HASH" ]; then
+              echo "❌ ERRO: O hash do commit na VPS ($CURRENT_COMMIT_HASH) não corresponde ao esperado ($EXPECTED_COMMIT_HASH)."
+              exit 1
+            fi
+            echo "✅ Verificação de versão bem-sucedida. Hash: ${CURRENT_COMMIT_HASH}"
+
+            echo ">>> Efetuando login no GitHub Container Registry..."
             echo ${{ secrets.GIT_PAT }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            
+            echo ">>> Puxando as imagens mais recentes..."
             docker compose pull
+            
+            echo ">>> Reiniciando os serviços..."
             docker compose up -d
+            
+            echo ">>> Aguardando os contêineres estabilizarem..."
             sleep 15
-            # CORREÇÃO: Usa o nome do serviço 'backend' como definido no docker-compose.yml
+            
+            echo ">>> Inicializando banco de dados e usuário admin..."
             docker compose exec backend python /app/init_admin.py
+            
+            echo ">>> Limpando imagens Docker antigas..."
             docker image prune -af
+            
             echo "✅ Deploy finalizado com sucesso!"
 
   validate:
@@ -105,13 +131,13 @@ jobs:
           sleep 30
       - name: 2. Validar o endpoint do Frontend
         run: |
-          echo "A verificar o URL do Frontend: https://setormusicalms.art.br/"
-          curl -sSf https://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
+          echo "A verificar o URL do Frontend: http://setormusicalms.art.br/"
+          curl -sSf http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
           echo "✅ O Frontend está online e a servir o conteúdo correto."
       - name: 3. Validar o endpoint do Backend (Health Check)
         run: |
-          echo "A verificar o URL do Backend: https://setormusicalms.art.br/api/health"
-          curl -sSf https://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
+          echo "A verificar o URL do Backend: http://setormusicalms.art.br/api/health"
+          curl -sSf http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
           echo "✅ O Backend está online e a responder corretamente."
       - name: 🚀 Validação Finalizada
         run: echo "A aplicação foi implantada e validada com sucesso!"
