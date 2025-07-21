@@ -1,5 +1,5 @@
 # fastapi_backend/crud/__init__.py
-# Versão 71 21/07/2025 18:18
+# Versão 72 21/07/2025 18:19
 
 from . import user
 from . import repertorio
