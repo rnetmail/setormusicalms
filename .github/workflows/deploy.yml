@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 62 21/07/2025 19:40
+# Versão 63 21/07/2025 19:48
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -99,8 +99,8 @@ jobs:
             cd $PROJECT_DIR
 
             echo ">>> Efetuando login no GitHub Container Registry..."
-            # CORREÇÃO: Usando o método recomendado para login não-interativo
-            echo $GIT_PAT | docker login $REGISTRY -u $GITHUB_ACTOR --password-stdin
+            # CORREÇÃO FINAL: Usando a flag --password para login não-interativo.
+            docker login $REGISTRY -u $GITHUB_ACTOR --password $GIT_PAT
             
             echo ">>> Limpando imagens Docker antigas..."
             docker image prune -af
