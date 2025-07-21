@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 60 21/07/2025 18:30
+# Versão 61 21/07/2025 18:45
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -63,4 +63,91 @@ jobs:
         id: push_backend
         uses: docker/build-push-action@v5
         with:
-          context
+          context: ./fastapi_backend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:latest
+      - name: Build e Push da imagem do Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          dockerfile: Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:latest
+
+  deploy:
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Deploy e Verificação na VPS
+        uses: appleboy/ssh-action@master
+        env:
+          EXPECTED_BACKEND_DIGEST: ${{ needs.build_and_push.outputs.backend_digest }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME_BACKEND: ${{ env.IMAGE_NAME_BACKEND }}
+          GIT_PAT: ${{ secrets.GIT_PAT }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          PROJECT_DIR: /home/${{ secrets.VPS_SSH_USER }}/setormusical/setormusicalms
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          password: ${{ secrets.VPS_SSH_PASS }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            set -e
+            echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
+            cd $PROJECT_DIR
+
+            echo ">>> Efetuando login no GitHub Container Registry..."
+            echo $GIT_PAT | docker login $REGISTRY -u $GITHUB_ACTOR --password-stdin
+            
+            echo ">>> Limpando imagens Docker antigas..."
+            docker image prune -af
+
+            echo ">>> Puxando as imagens mais recentes..."
+            docker compose pull
+            
+            echo ">>> Verificando o hash da imagem do backend..."
+            LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest)
+            
+            # Extrai apenas o hash
+            LOCAL_BACKEND_HASH=$(echo $LOCAL_BACKEND_DIGEST | cut -d'@' -f2)
+            EXPECTED_BACKEND_HASH=$(echo $EXPECTED_BACKEND_DIGEST | cut -d'@' -f2)
+
+            if [ "$LOCAL_BACKEND_HASH" != "$EXPECTED_BACKEND_HASH" ]; then
+              echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_HASH) não corresponde ao esperado ($EXPECTED_BACKEND_HASH)."
+              exit 1
+            fi
+            echo "✅ Verificação de hash bem-sucedida."
+
+            echo ">>> Reiniciando os serviços..."
+            docker compose up -d
+            
+            echo ">>> Aguardando os contêineres..."
+            sleep 15
+            
+            echo ">>> Inicializando banco de dados..."
+            docker compose exec backend python /app/init_admin.py
+            
+            echo "✅ Deploy finalizado com sucesso!"
+
+  validate:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Aguardar a inicialização dos serviços na VPS
+        run: |
+          echo "A aguardar 30 segundos para os serviços estabilizarem..."
+          sleep 30
+      - name: 2. Validar o endpoint do Frontend
+        run: |
+          echo "A verificar o URL do Frontend: http://setormusicalms.art.br/"
+          curl -sSf http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
+          echo "✅ O Frontend está online e a servir o conteúdo correto."
+      - name: 3. Validar o endpoint do Backend (Health Check)
+        run: |
+          echo "A verificar o URL do Backend: http://setormusicalms.art.br/api/health"
+          curl -sSf http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
+          echo "✅ O Backend está online e a responder corretamente."
+      - name: 🚀 Validação Finalizada
+        run: echo "A aplicação foi implantada e validada com sucesso!"
