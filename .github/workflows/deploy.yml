@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 93 22/07/2025 22:20
+# Versão 92 22/07/2025 22:05
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -101,13 +101,13 @@ jobs:
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
             
             echo ">>> Parando serviços atuais (se existirem)..."
-            docker compose down --remove-orphans
+            sudo docker compose down --remove-orphans
             
             echo ">>> Puxando as imagens mais recentes..."
-            docker compose pull
+            sudo docker compose pull
             
             echo ">>> Verificando o hash da imagem do backend..."
-            LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
+            LOCAL_BACKEND_DIGEST=$(sudo docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
 
             if [ "$LOCAL_BACKEND_DIGEST" != "$EXPECTED_BACKEND_DIGEST" ]; then
               echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_DIGEST) não corresponde ao esperado ($EXPECTED_BACKEND_DIGEST)."
@@ -116,16 +116,16 @@ jobs:
             echo "✅ Verificação de hash bem-sucedida."
 
             echo ">>> Reiniciando os serviços..."
-            docker compose up -d
+            sudo docker compose up -d
             
             echo ">>> Aguardando os contêineres..."
             sleep 15
             
             echo ">>> Inicializando banco de dados..."
-            docker compose exec backend python /app/init_admin.py
+            sudo docker compose exec backend python /app/init_admin.py
             
             echo ">>> Limpando imagens Docker não utilizadas..."
-            docker image prune -af
+            sudo docker image prune -af
             
             echo "✅ Deploy finalizado com sucesso!"
 
