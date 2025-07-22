@@ -31,4 +31,4 @@ EXPOSE 8000
 # O comando para iniciar a aplicação é definido no docker-compose.yml,
 # então não é estritamente necessário aqui, mas é uma boa prática
 # para tornar a imagem executável por si só.
-# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
