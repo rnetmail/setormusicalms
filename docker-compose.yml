@@ -23,7 +23,7 @@ services:
     ports:
       # CORREÇÃO: Mapeia a porta 3000 do contêiner (onde o 'serve' roda)
       # para a porta 3000 do host, alinhando com a configuração do Nginx da VPS.
-      - "3000:80"
+      - "3000:3000"
     depends_on:
       - backend
     restart: unless-stopped
