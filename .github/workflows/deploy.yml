@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 65 21/07/2025 20:15
+# Versão 66 22/07/2025 15:25
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -85,8 +85,7 @@ jobs:
           EXPECTED_BACKEND_DIGEST: ${{ needs.build_and_push.outputs.backend_digest }}
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME_BACKEND: ${{ env.IMAGE_NAME_BACKEND }}
-          GIT_PAT: ${{ secrets.GIT_PAT }}
-          GITHUB_ACTOR: ${{ github.actor }}
+          DOCKER_CONFIG: ${{ secrets.DOCKER_CONFIG_JSON }}
           PROJECT_DIR: /home/${{ secrets.VPS_SSH_USER }}/setormusical/setormusicalms
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -97,12 +96,17 @@ jobs:
             set -e
             echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
-            echo ">>> Efetuando login no GitHub Container Registry..."
-            echo $GIT_PAT | docker login $REGISTRY -u $GITHUB_ACTOR --password-stdin
+
+            echo ">>> Configurando autenticação do Docker..."
+            mkdir -p ~/.docker
+            echo "$DOCKER_CONFIG" > ~/.docker/config.json
+            
             echo ">>> Limpando imagens Docker antigas..."
             docker image prune -af
+
             echo ">>> Puxando as imagens mais recentes..."
             docker compose pull
+            
             echo ">>> Verificando o hash da imagem do backend..."
             LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest)
             LOCAL_BACKEND_HASH=$(echo $LOCAL_BACKEND_DIGEST | cut -d'@' -f2)
@@ -112,12 +116,16 @@ jobs:
               exit 1
             fi
             echo "✅ Verificação de hash bem-sucedida."
+
             echo ">>> Reiniciando os serviços..."
             docker compose up -d
+            
             echo ">>> Aguardando os contêineres..."
             sleep 15
+            
             echo ">>> Inicializando banco de dados..."
             docker compose exec backend python /app/init_admin.py
+            
             echo "✅ Deploy finalizado com sucesso!"
 
   validate:
