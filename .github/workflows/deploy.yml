@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 95 - Revisado em 22/07/2025
+# Versão 96 - Revisado em 22/07/2025
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -154,12 +154,12 @@ jobs:
             echo "[`date`] Inicializando dados"
             docker compose exec backend python /app/init_admin.py
 
-            echo "[`date`] Validando regras do nginx"
-            if curl -sI http://localhost/ | grep -q "302.*cloudezapp"; then
-              echo "❌ Nginx está redirecionando para cloudezapp.io"
+            echo "[`date`] Validando regras do nginx com domínio"
+            if curl -sI http://setormusicalms.art.br/ | grep -q "302.*cloudezapp"; then
+              echo "❌ Nginx está redirecionando incorretamente para cloudezapp.io"
               exit 1
             fi
-            if ! curl -sSf http://localhost/api/health | grep -q '"status":"healthy"'; then
+            if ! curl -sSf http://setormusicalms.art.br/api/health | grep -q '"status":"healthy"'; then
               echo "❌ Nginx não está encaminhando corretamente para o backend"
               exit 1
             fi
@@ -179,15 +179,20 @@ jobs:
 
       - name: Validar Frontend
         run: |
-          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
-          echo "✅ Frontend online"
+          echo "🌐 Validando frontend em http://setormusicalms.art.br/"
+          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>" && echo "✅ Frontend online" || (echo "❌ Frontend falhou" && exit 1)
 
       - name: Validar Backend
         run: |
-          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
-          echo "✅ Backend online"
+          echo "🌐 Validando backend em http://setormusicalms.art.br/api/health"
+          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}' && echo "✅ Backend online" || (echo "❌ Backend falhou" && exit 1)
 
       - name: Endpoint autenticado (opcional)
         run: |
           echo "ℹ️ Validando endpoint autenticado (esperado 401 ou 403)..."
-          curl -s -o /dev/null -w "%{http_code}" http://setormusicalms.art.br/api/users/current | grep -qE "401|403" && echo "✅ Endpoint protegido" || echo "⚠️ Possível problema de segurança"
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://setormusicalms.art.br/api/users/current)
+          if [[ "$STATUS_CODE" == "401" || "$STATUS_CODE" == "403" ]]; then
+            echo "✅ Endpoint protegido"
+          else
+            echo "⚠️ Possível problema de segurança: código HTTP $STATUS_CODE"
+          fi
