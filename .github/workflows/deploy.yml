@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 88 22/07/2025 21:30
+# Versão 90 22/07/2025 21:00
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -79,7 +79,8 @@ jobs:
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    environment: prod
+    # CORREÇÃO CRUCIAL: Declara o ambiente para ter acesso aos segredos
+    environment: prod 
     steps:
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@master
@@ -90,7 +91,6 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
-            # CORREÇÃO: O caminho agora é lido diretamente do segredo que você configurou
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
             EXPECTED_BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
 
