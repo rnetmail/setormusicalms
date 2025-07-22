@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 69 22/07/2025 15:50
+# Versão 70 22/07/2025 16:00
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -111,9 +111,14 @@ jobs:
             $SUDO_CMD docker compose pull
             
             echo ">>> Verificando o hash da imagem do backend..."
-            LOCAL_BACKEND_DIGEST=$($SUDO_CMD docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest)
+            # CORREÇÃO: Usando um arquivo temporário para capturar a saída de forma segura
+            $SUDO_CMD docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest > /tmp/digest.txt
+            LOCAL_BACKEND_DIGEST=$(cat /tmp/digest.txt)
+            rm /tmp/digest.txt
+
             LOCAL_BACKEND_HASH=$(echo $LOCAL_BACKEND_DIGEST | cut -d'@' -f2)
             EXPECTED_BACKEND_HASH=$(echo $EXPECTED_BACKEND_DIGEST | cut -d'@' -f2)
+
             if [ "$LOCAL_BACKEND_HASH" != "$EXPECTED_BACKEND_HASH" ]; then
               echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_HASH) não corresponde ao esperado ($EXPECTED_BACKEND_HASH)."
               exit 1
