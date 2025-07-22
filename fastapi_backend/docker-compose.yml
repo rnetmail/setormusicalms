@@ -1,38 +1,27 @@
-# version: '3.8'
+# fastapi_backend/docker-compose.yml
+# Versão 01 22/07/2025 14:50
 
 services:
-  fastapi-backend:
+  backend:
     build: .
+    container_name: setormusicalms-backend-sqlite
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      # Mapeia o código local para o contêiner para desenvolvimento em tempo real.
+      - .:/app
+      # Cria um volume para persistir o arquivo do banco de dados SQLite.
+      - sqlite_data:/app/data
     ports:
+      # Expõe a porta 8000 do contêiner para a porta 8000 do host.
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://mestre:Setor@MS25@db:5432/setormusicalms_db
-      - SECRET_KEY=sua-chave-secreta-super-forte-aqui-fastapi
+      # Define a URL do banco de dados para usar o arquivo SQLite dentro do volume.
+      - DATABASE_URL=sqlite:///data/setormusical.db
+      - SECRET_KEY=uma-chave-secreta-para-desenvolvimento
       - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=30
-    depends_on:
-      - db
-    volumes:
-      - .:/app
-    networks:
-      - setormusicalms_default
-
-  db:
-    image: postgres:14-alpine
-    environment:
-      POSTGRES_DB: setormusicalms_db
-      POSTGRES_USER: mestre
-      POSTGRES_PASSWORD: Setor@MS25
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
-    networks:
-      - setormusicalms_default
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
-
-networks:
-  setormusicalms_default:
-    external: true
+  # Define o volume nomeado para armazenar o banco de dados SQLite.
+  sqlite_data:
