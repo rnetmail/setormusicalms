@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 90 22/07/2025 21:00
+# Versão 91 22/07/2025 21:40
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -79,8 +79,7 @@ jobs:
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    # CORREÇÃO CRUCIAL: Declara o ambiente para ter acesso aos segredos
-    environment: prod 
+    environment: prod
     steps:
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@master
@@ -102,10 +101,10 @@ jobs:
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
             
             echo ">>> Puxando as imagens mais recentes..."
-            sudo docker compose pull
+            docker compose pull
             
             echo ">>> Verificando o hash da imagem do backend..."
-            LOCAL_BACKEND_DIGEST=$(sudo docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
+            LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
 
             if [ "$LOCAL_BACKEND_DIGEST" != "$EXPECTED_BACKEND_DIGEST" ]; then
               echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_DIGEST) não corresponde ao esperado ($EXPECTED_BACKEND_DIGEST)."
@@ -114,16 +113,16 @@ jobs:
             echo "✅ Verificação de hash bem-sucedida."
 
             echo ">>> Reiniciando os serviços..."
-            sudo docker compose up -d
+            docker compose up -d
             
             echo ">>> Aguardando os contêineres..."
             sleep 15
             
             echo ">>> Inicializando banco de dados..."
-            sudo docker compose exec backend python /app/init_admin.py
+            docker compose exec backend python /app/init_admin.py
             
             echo ">>> Limpando imagens Docker não utilizadas..."
-            sudo docker image prune -af
+            docker image prune -af
             
             echo "✅ Deploy finalizado com sucesso!"
 
