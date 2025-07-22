@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 99 - Final e Otimizada
+# Versão 98 - Final com Ambiente e Validação
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -18,10 +18,8 @@ jobs:
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
-
       - name: Subir serviços com Docker Compose
         run: docker compose up -d --build
-
       - name: Aguardar e Verificar saúde da API
         run: |
           echo "⏳ Aguardando saúde da API..."
@@ -37,13 +35,11 @@ jobs:
           done
           echo "✅ API saudável!"
           docker compose exec backend python /app/init_admin.py
-
       - name: Instalar dependências e Executar Testes
         run: |
           pip install -r fastapi_backend/requirements.txt
           playwright install
           pytest fastapi_backend/
-
       - name: Encerrar containers após testes
         if: always()
         run: docker compose down
@@ -85,7 +81,7 @@ jobs:
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    environment: prod
+    environment: prod # <-- CORREÇÃO CRUCIAL APLICADA
     steps:
       - name: Deploy via SSH na VPS
         uses: appleboy/ssh-action@master
@@ -98,11 +94,7 @@ jobs:
           script: |
             set -e
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
-            BACKEND_IMAGE="${{ env.IMAGE_NAME_BACKEND }}"
-            FRONTEND_IMAGE="${{ env.IMAGE_NAME_FRONTEND }}"
-            BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
-            FRONTEND_DIGEST="${{ needs.build_and_push.outputs.frontend_digest }}"
-
+            
             echo "[`date`] Acessando o projeto..."
             cd $PROJECT_DIR
 
@@ -114,22 +106,17 @@ jobs:
             docker compose down --remove-orphans
             
             echo "[`date`] Baixando imagens atualizadas..."
-            docker pull $BACKEND_IMAGE@$BACKEND_DIGEST
-            docker tag $BACKEND_IMAGE@$BACKEND_DIGEST $BACKEND_IMAGE:latest
-            docker pull $FRONTEND_IMAGE@$FRONTEND_DIGEST
-            docker tag $FRONTEND_IMAGE@$FRONTEND_DIGEST $FRONTEND_IMAGE:latest
+            docker compose pull
 
-            echo "[`date`] Subindo containers..."
+            echo "[`date`] Subindo novos containers..."
             docker compose up -d
-
-            echo "[`date`] Limpando cache de imagens..."
-            docker image prune -af
             
             echo "[`date`] ✅ Sequência de deploy enviada para a VPS."
 
   validate:
     needs: deploy
     runs-on: ubuntu-latest
+    environment: prod # <-- AMBIENTE TAMBÉM NECESSÁRIO AQUI
     steps:
       - name: Validar saúde da aplicação na VPS
         uses: appleboy/ssh-action@master
@@ -154,7 +141,7 @@ jobs:
             docker compose logs backend --tail=100
             
             echo ">>> Testando o health check da API..."
-            if curl -sSf --retry 2 --retry-delay 5 http://localhost:8000/api/health | grep -q '"status":"healthy"'; then
+            if curl -sSf --retry 3 --retry-delay 5 http://localhost:8000/api/health | grep -q '"status":"healthy"'; then
               echo "✅ Health check da API bem-sucedido!"
             else
               echo "❌ ERRO: Health check da API falhou."
@@ -163,5 +150,8 @@ jobs:
             
             echo ">>> Inicializando banco de dados..."
             docker compose exec backend python /app/init_admin.py
+
+            echo ">>> Limpando imagens não utilizadas..."
+            docker image prune -af
 
             echo ">>> ✅ Validação na VPS concluída com sucesso!"
