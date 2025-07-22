@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 68 22/07/2025 15:40
+# Versão 69 22/07/2025 15:50
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -86,8 +86,8 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME_BACKEND: ${{ env.IMAGE_NAME_BACKEND }}
           DOCKER_CONFIG: ${{ secrets.DOCKER_CONFIG_JSON }}
-          # CORREÇÃO: Removido o "/setormusical" extra do caminho
           PROJECT_DIR: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
+          SUDO_PASS: ${{ secrets.VPS_SUDO_PASS }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_SSH_USER }}
@@ -95,6 +95,8 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
+            SUDO_CMD="echo $SUDO_PASS | sudo -S"
+
             echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
 
@@ -103,13 +105,13 @@ jobs:
             echo "$DOCKER_CONFIG" > ~/.docker/config.json
             
             echo ">>> Limpando imagens Docker antigas..."
-            sudo docker image prune -af
+            $SUDO_CMD docker image prune -af
 
             echo ">>> Puxando as imagens mais recentes..."
-            sudo docker compose pull
+            $SUDO_CMD docker compose pull
             
             echo ">>> Verificando o hash da imagem do backend..."
-            LOCAL_BACKEND_DIGEST=$(sudo docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest)
+            LOCAL_BACKEND_DIGEST=$($SUDO_CMD docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest)
             LOCAL_BACKEND_HASH=$(echo $LOCAL_BACKEND_DIGEST | cut -d'@' -f2)
             EXPECTED_BACKEND_HASH=$(echo $EXPECTED_BACKEND_DIGEST | cut -d'@' -f2)
             if [ "$LOCAL_BACKEND_HASH" != "$EXPECTED_BACKEND_HASH" ]; then
@@ -119,13 +121,13 @@ jobs:
             echo "✅ Verificação de hash bem-sucedida."
 
             echo ">>> Reiniciando os serviços..."
-            sudo docker compose up -d
+            $SUDO_CMD docker compose up -d
             
             echo ">>> Aguardando os contêineres..."
             sleep 15
             
             echo ">>> Inicializando banco de dados..."
-            sudo docker compose exec backend python /app/init_admin.py
+            $SUDO_CMD docker compose exec backend python /app/init_admin.py
             
             echo "✅ Deploy finalizado com sucesso!"
 
