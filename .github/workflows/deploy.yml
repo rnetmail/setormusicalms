@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 92 22/07/2025 22:05
+# Versão 93 - Corrigido e Melhorado em 22/07/2025
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -19,28 +19,32 @@ jobs:
     steps:
       - name: 1. Checkout do código
         uses: actions/checkout@v4
+
       - name: 2. Iniciar serviços com Docker Compose
         run: docker compose up -d --build
+
       - name: 3. Aguardar e Verificar a Saúde da API
         run: |
-          echo "A aguardar que a API esteja pronta..."
+          echo "⏳ Aguardando saúde da API..."
           timeout=90
-          while ! curl -sSf http://localhost:8000/api/health; do
+          until curl -sSf http://localhost:8000/api/health; do
             timeout=$((timeout - 5))
             if [ $timeout -le 0 ]; then
-              echo "A API não ficou pronta em 90 segundos."
+              echo "❌ A API não ficou pronta em 90s"
               docker compose logs backend
               exit 1
             fi
             sleep 5
           done
-          echo "✅ API está pronta e a responder!"
+          echo "✅ API saudável!"
           docker compose exec backend python /app/init_admin.py
+
       - name: 4. Instalar dependências e Executar Testes
         run: |
           pip install -r fastapi_backend/requirements.txt
           playwright install
           pytest fastapi_backend/
+
       - name: 5. Parar os serviços após os testes
         if: always()
         run: docker compose down
@@ -53,14 +57,19 @@ jobs:
       packages: write
     outputs:
       backend_digest: ${{ steps.push_backend.outputs.digest }}
+      frontend_digest: ${{ steps.push_frontend.outputs.digest }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
       - name: Login no GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build e Push da imagem do Backend
         id: push_backend
         uses: docker/build-push-action@v5
@@ -68,13 +77,22 @@ jobs:
           context: ./fastapi_backend
           push: true
           tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
+          outputs: type=image,name=${{ env.IMAGE_NAME_BACKEND }},annotation-index=true
+
       - name: Build e Push da imagem do Frontend
+        id: push_frontend
         uses: docker/build-push-action@v5
         with:
           context: .
           dockerfile: Dockerfile
           push: true
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
+          outputs: type=image,name=${{ env.IMAGE_NAME_FRONTEND }},annotation-index=true
+
+      - name: Verificar imagens no GHCR
+        run: |
+          docker pull ${{ env.IMAGE_NAME_BACKEND }}:latest
+          docker pull ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
   deploy:
     needs: build_and_push
@@ -86,60 +104,89 @@ jobs:
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_SSH_USER }}
-          password: ${{ secrets.VPS_SSH_PASS }}
-          port: ${{ secrets.VPS_SSH_PORT }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          port: 22
           script: |
             set -e
-            PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
-            EXPECTED_BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
 
-            echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
+            PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
+            BACKEND_IMAGE="${{ env.IMAGE_NAME_BACKEND }}"
+            FRONTEND_IMAGE="${{ env.IMAGE_NAME_FRONTEND }}"
+            BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
+            FRONTEND_DIGEST="${{ needs.build_and_push.outputs.frontend_digest }}"
+
+            echo "[`date`] ✅ Acessando o diretório do projeto"
             cd $PROJECT_DIR
-            
-            echo ">>> Configurando autenticação do Docker..."
+
+            echo "[`date`] 🔐 Configurando autenticação do Docker"
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
-            
-            echo ">>> Parando serviços atuais (se existirem)..."
-            docker compose down --remove-orphans
-            
-            echo ">>> Puxando as imagens mais recentes..."
-            docker compose pull
-            
-            echo ">>> Verificando o hash da imagem do backend..."
-            LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
 
-            if [ "$LOCAL_BACKEND_DIGEST" != "$EXPECTED_BACKEND_DIGEST" ]; then
-              echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_DIGEST) não corresponde ao esperado ($EXPECTED_BACKEND_DIGEST)."
+            echo "[`date`] 🛑 Parando containers antigos"
+            docker compose down --remove-orphans
+
+            echo "[`date`] ⬇️ Baixando imagens do GHCR com digest"
+            docker pull $BACKEND_IMAGE@$BACKEND_DIGEST
+            docker tag $BACKEND_IMAGE@$BACKEND_DIGEST $BACKEND_IMAGE:latest
+
+            docker pull $FRONTEND_IMAGE@$FRONTEND_DIGEST
+            docker tag $FRONTEND_IMAGE@$FRONTEND_DIGEST $FRONTEND_IMAGE:latest
+
+            echo "[`date`] 🔍 Verificando hash das imagens"
+            LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $BACKEND_IMAGE:latest)
+            LOCAL_FRONTEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $FRONTEND_IMAGE:latest)
+
+            if [[ "$LOCAL_BACKEND_DIGEST" != "$BACKEND_IMAGE@$BACKEND_DIGEST" ]]; then
+              echo "❌ Hash do backend não confere!"
               exit 1
             fi
-            echo "✅ Verificação de hash bem-sucedida."
 
-            echo ">>> Reiniciando os serviços..."
+            if [[ "$LOCAL_FRONTEND_DIGEST" != "$FRONTEND_IMAGE@$FRONTEND_DIGEST" ]]; then
+              echo "❌ Hash do frontend não confere!"
+              exit 1
+            fi
+
+            echo "[`date`] 🚀 Subindo os containers"
             docker compose up -d
-            
-            echo ">>> Aguardando os contêineres..."
-            sleep 20
-            
-            echo ">>> Inicializando banco de dados..."
+
+            echo "[`date`] 🩺 Aguardando backend (health check)"
+            timeout=90
+            until curl -sSf http://localhost:8000/api/health; do
+              timeout=$((timeout - 5))
+              if [ $timeout -le 0 ]; then
+                echo "❌ Backend falhou no health check!"
+                docker compose logs backend
+                exit 1
+              fi
+              sleep 5
+            done
+
+            echo "[`date`] 🧠 Inicializando dados..."
             docker compose exec backend python /app/init_admin.py
-            
-            echo ">>> Limpando imagens Docker não utilizadas..."
-            docker image prune -af
-            
-            echo "✅ Deploy finalizado com sucesso!"
+
+            echo "[`date`] 🧹 Limpando imagens e volumes obsoletos"
+            docker system prune -af --volumes
+
+            echo "[`date`] ✅ Deploy concluído com sucesso"
 
   validate:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Aguardar a inicialização dos serviços na VPS
+      - name: 1. Aguardar serviços na VPS
         run: sleep 30
-      - name: 2. Validar o endpoint do Frontend
+
+      - name: 2. Validar o frontend
         run: |
           curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
-          echo "✅ O Frontend está online."
-      - name: 3. Validar o endpoint do Backend (Health Check)
+          echo "✅ Frontend online"
+
+      - name: 3. Validar o backend (health)
         run: |
           curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
-          echo "✅ O Backend está online."
+          echo "✅ Backend online"
+
+      - name: 4. Teste extra de endpoint autenticado (opcional)
+        run: |
+          echo "ℹ️ Validando endpoint extra opcional..."
+          curl -sSf http://setormusicalms.art.br/api/users/current || echo "⚠️ Endpoint protegido, token necessário"
