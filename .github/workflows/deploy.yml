@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 86 22/07/2025 20:30
+# Versão 73 22/07/2025 16:55
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -35,7 +35,7 @@ jobs:
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
-          docker compose exec backend python init_admin.py
+          docker compose exec backend python /app/init_admin.py
       - name: 4. Instalar dependências e Executar Testes
         run: |
           pip install -r fastapi_backend/requirements.txt
@@ -75,26 +75,12 @@ jobs:
           dockerfile: Dockerfile
           push: true
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
-      - name: Salvar Hash da Imagem em Artefato
-        run: |
-          mkdir -p artifacts
-          echo "${{ steps.push_backend.outputs.digest }}" > artifacts/backend_digest.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: backend-digest
-          path: artifacts/backend_digest.txt
 
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    # ADIÇÃO CRUCIAL: Declara o ambiente para ter acesso aos segredos
-    environment: prod 
+    environment: prod
     steps:
-      - name: Baixar artefato com o hash da imagem
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-digest
-          path: /tmp
       - name: Deploy e Verificação na VPS
         uses: appleboy/ssh-action@master
         with:
@@ -105,14 +91,14 @@ jobs:
           script: |
             set -e
             PROJECT_DIR="/home/${{ secrets.VPS_SSH_USER }}/setormusicalms"
-            EXPECTED_BACKEND_DIGEST=$(cat /tmp/backend_digest.txt)
+            EXPECTED_BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
 
             echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
             
             echo ">>> Configurando autenticação do Docker..."
             mkdir -p ~/.docker
-            echo "${{ secrets.DOCKER_CONFIG_JSON }}" > ~/.docker/config.json
+            echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
             
             echo ">>> Puxando as imagens mais recentes..."
             sudo docker compose pull
