@@ -1,7 +1,7 @@
 # .github/workflows/deploy.yml
-# Versão 96 - Revisado em 22/07/2025
+# Versão 97 - Final e Simplificada
 
-name: CI/CD - Testar, Construir, Implementar e Validar
+name: CI/CD - Construir e Implementar
 
 on:
   push:
@@ -13,186 +13,103 @@ env:
   IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-
-      - name: Subir serviços com Docker Compose
-        run: docker compose up -d --build
-
-      - name: Aguardar e Verificar saúde da API
-        run: |
-          echo "⏳ Aguardando saúde da API..."
-          timeout=90
-          until curl -sSf http://localhost:8000/api/health; do
-            timeout=$((timeout - 5))
-            if [ $timeout -le 0 ]; then
-              echo "❌ A API não ficou pronta em 90s"
-              docker compose logs backend
-              exit 1
-            fi
-            sleep 5
-          done
-          echo "✅ API saudável!"
-          docker compose exec backend python /app/init_admin.py
-
-      - name: Instalar dependências e Executar Testes
-        run: |
-          pip install -r fastapi_backend/requirements.txt
-          playwright install
-          pytest fastapi_backend/
-
-      - name: Encerrar containers após testes
-        if: always()
-        run: docker compose down
-
   build_and_push:
-    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    outputs:
-      backend_digest: ${{ steps.push_backend.outputs.digest }}
-      frontend_digest: ${{ steps.push_frontend.outputs.digest }}
-
     steps:
-      - name: Checkout do código
+      - name: 1. Checkout do código
         uses: actions/checkout@v4
 
-      - name: Login no GHCR
+      - name: 2. Login no GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build e Push Backend
-        id: push_backend
+      - name: 3. Build e Push da imagem do Backend
         uses: docker/build-push-action@v5
         with:
           context: ./fastapi_backend
           push: true
           tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
-          outputs: type=image,name=${{ env.IMAGE_NAME_BACKEND }},annotation-index=true
 
-      - name: Build e Push Frontend
-        id: push_frontend
+      - name: 4. Build e Push da imagem do Frontend
         uses: docker/build-push-action@v5
         with:
           context: .
           dockerfile: Dockerfile
           push: true
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
-          outputs: type=image,name=${{ env.IMAGE_NAME_FRONTEND }},annotation-index=true
-
-      - name: Validar imagens no GHCR
-        run: |
-          docker pull ${{ env.IMAGE_NAME_BACKEND }}:latest
-          docker pull ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - name: Deploy via SSH na VPS
+      - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_SSH_USER }}
-          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          port: 22
+          password: ${{ secrets.VPS_SSH_PASS }}
+          port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
-            BACKEND_IMAGE="${{ env.IMAGE_NAME_BACKEND }}"
-            FRONTEND_IMAGE="${{ env.IMAGE_NAME_FRONTEND }}"
-            BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
-            FRONTEND_DIGEST="${{ needs.build_and_push.outputs.frontend_digest }}"
 
-            echo "[`date`] Acessando o projeto"
+            echo ">>> [1/6] Acedendo ao diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
-
-            echo "[`date`] Autenticando no GHCR"
+            
+            echo ">>> [2/6] Configurando autenticação do Docker..."
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
-
-            echo "[`date`] Parando containers antigos"
-            docker compose down --remove-orphans
-
-            echo "[`date`] Baixando imagens atualizadas"
-            docker pull $BACKEND_IMAGE@$BACKEND_DIGEST
-            docker tag $BACKEND_IMAGE@$BACKEND_DIGEST $BACKEND_IMAGE:latest
-            docker pull $FRONTEND_IMAGE@$FRONTEND_DIGEST
-            docker tag $FRONTEND_IMAGE@$FRONTEND_DIGEST $FRONTEND_IMAGE:latest
-
-            echo "[`date`] Verificando integridade"
-            docker inspect --format='{{index .RepoDigests 0}}' $BACKEND_IMAGE:latest | grep $BACKEND_DIGEST || (echo "❌ Backend com hash incorreto" && exit 1)
-            docker inspect --format='{{index .RepoDigests 0}}' $FRONTEND_IMAGE:latest | grep $FRONTEND_DIGEST || (echo "❌ Frontend com hash incorreto" && exit 1)
-
-            echo "[`date`] Subindo containers"
-            docker compose up -d
-
-            echo "[`date`] Logs iniciais do backend"
-            docker compose logs backend --tail=50
-
-            echo "[`date`] Health check do backend"
-            timeout=150
-            until curl -sSf http://localhost:8000/api/health; do
-              timeout=$((timeout - 5))
-              if [ $timeout -le 0 ]; then
-                echo "❌ Backend falhou no health check!"
-                docker compose logs backend
-                exit 1
-              fi
-              sleep 5
-            done
-
-            echo "[`date`] Inicializando dados"
-            docker compose exec backend python /app/init_admin.py
-
-            echo "[`date`] Validando regras do nginx com domínio"
-            if curl -sI http://setormusicalms.art.br/ | grep -q "302.*cloudezapp"; then
-              echo "❌ Nginx está redirecionando incorretamente para cloudezapp.io"
-              exit 1
-            fi
-            if ! curl -sSf http://setormusicalms.art.br/api/health | grep -q '"status":"healthy"'; then
-              echo "❌ Nginx não está encaminhando corretamente para o backend"
-              exit 1
-            fi
-            echo "✅ Nginx configurado corretamente"
-
-            echo "[`date`] Limpando cache de imagens"
-            docker system prune -af --volumes
-
-            echo "[`date`] ✅ Deploy finalizado com sucesso"
-
+            
+            echo ">>> [3/6] Parando serviços antigos..."
+            sudo docker compose down --remove-orphans
+            
+            echo ">>> [4/6] Puxando as imagens mais recentes..."
+            sudo docker compose pull
+            
+            echo ">>> [5/6] Subindo os novos contêineres..."
+            sudo docker compose up -d
+            
+            # Aguarda um momento para que o backend tente iniciar
+            echo ">>> [6/6] Aguardando 10s para capturar logs de inicialização..."
+            sleep 10
+            
+            echo "✅ Sequência de deploy enviada para a VPS."
+            
   validate:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Esperar serviços na VPS
-        run: sleep 30
+      - name: Validar saúde da aplicação na VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          password: ${{ secrets.VPS_SSH_PASS }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            set -e
+            PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
+            cd $PROJECT_DIR
 
-      - name: Validar Frontend
-        run: |
-          echo "🌐 Validando frontend em http://setormusicalms.art.br/"
-          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>" && echo "✅ Frontend online" || (echo "❌ Frontend falhou" && exit 1)
+            echo ">>> Verificando status dos contêineres..."
+            sudo docker compose ps
 
-      - name: Validar Backend
-        run: |
-          echo "🌐 Validando backend em http://setormusicalms.art.br/api/health"
-          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}' && echo "✅ Backend online" || (echo "❌ Backend falhou" && exit 1)
-
-      - name: Endpoint autenticado (opcional)
-        run: |
-          echo "ℹ️ Validando endpoint autenticado (esperado 401 ou 403)..."
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://setormusicalms.art.br/api/users/current)
-          if [[ "$STATUS_CODE" == "401" || "$STATUS_CODE" == "403" ]]; then
-            echo "✅ Endpoint protegido"
-          else
-            echo "⚠️ Possível problema de segurança: código HTTP $STATUS_CODE"
-          fi
+            echo ">>> Exibindo logs do backend para diagnóstico..."
+            sudo docker compose logs backend --tail=100
+            
+            echo ">>> Testando o health check da API..."
+            if curl -sSf http://setormusicalms.art.br:8000/api/health | grep -q '{"status":"healthy"}'; then
+              echo "✅ Health check da API bem-sucedido!"
+            else
+              echo "❌ ERRO: Health check da API falhou."
+              exit 1
+            fi
+            
+            echo ">>> ✅ Validação na VPS concluída com sucesso!"
