@@ -1,7 +1,7 @@
 # .github/workflows/deploy.yml
-# Versão 84 21/07/2025 23:05
+# Versão 86 22/07/2025 20:30
 
-name: CI/CD - Testar, Construir e Implementar
+name: CI/CD - Testar, Construir, Implementar e Validar
 
 on:
   push:
@@ -12,7 +12,6 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
   IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
-  PROJECT_PATH_ON_VPS: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
 
 jobs:
   test:
@@ -20,47 +19,29 @@ jobs:
     steps:
       - name: 1. Checkout do código
         uses: actions/checkout@v4
-
       - name: 2. Iniciar serviços com Docker Compose
         run: docker compose up -d --build
-
       - name: 3. Aguardar e Verificar a Saúde da API
         run: |
           echo "A aguardar que a API esteja pronta..."
-          timeout=60
-          # CORREÇÃO: Verifica a porta correta do backend (8000).
+          timeout=90
           while ! curl -sSf http://localhost:8000/api/health; do
             timeout=$((timeout - 5))
             if [ $timeout -le 0 ]; then
-              echo "A API não ficou pronta em 60 segundos."
+              echo "A API não ficou pronta em 90 segundos."
               docker compose logs backend
               exit 1
             fi
-            echo "API ainda não está pronta. A aguardar 5 segundos..."
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
           docker compose exec backend python init_admin.py
-
-      - name: 4. Configurar ambiente Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: 5. Instalar dependências Python e Playwright
+      - name: 4. Instalar dependências e Executar Testes
         run: |
-          python -m pip install --upgrade pip
           pip install -r fastapi_backend/requirements.txt
           playwright install
-
-      - name: 6. Executar testes com Pytest
-        run: pytest fastapi_backend/
-      
-      - name: 7. Exibir logs do backend em caso de falha
-        if: failure()
-        run: docker compose logs backend
-
-      - name: 8. Parar os serviços após os testes
+          pytest fastapi_backend/
+      - name: 5. Parar os serviços após os testes
         if: always()
         run: docker compose down
 
@@ -70,37 +51,51 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      backend_digest: ${{ steps.push_backend.outputs.digest }}
     steps:
-      - name: 1. Checkout do código
-        uses: actions/checkout@v4
-
-      - name: 2. Login no GitHub Container Registry
+      - uses: actions/checkout@v4
+      - name: Login no GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 3. Build e Push da imagem do Backend
+      - name: Build e Push da imagem do Backend
+        id: push_backend
         uses: docker/build-push-action@v5
         with:
           context: ./fastapi_backend
           push: true
           tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
-
-      - name: 4. Build e Push da imagem do Frontend
+      - name: Build e Push da imagem do Frontend
         uses: docker/build-push-action@v5
         with:
           context: .
           dockerfile: Dockerfile
           push: true
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
+      - name: Salvar Hash da Imagem em Artefato
+        run: |
+          mkdir -p artifacts
+          echo "${{ steps.push_backend.outputs.digest }}" > artifacts/backend_digest.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-digest
+          path: artifacts/backend_digest.txt
 
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
+    # ADIÇÃO CRUCIAL: Declara o ambiente para ter acesso aos segredos
+    environment: prod 
     steps:
-      - name: Deploy na VPS via SSH
+      - name: Baixar artefato com o hash da imagem
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-digest
+          path: /tmp
+      - name: Deploy e Verificação na VPS
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -109,25 +104,53 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
-            echo ">> Acedendo ao diretório do projeto..."
-            cd ${{ env.PROJECT_PATH_ON_VPS }}
+            PROJECT_DIR="/home/${{ secrets.VPS_SSH_USER }}/setormusicalms"
+            EXPECTED_BACKEND_DIGEST=$(cat /tmp/backend_digest.txt)
+
+            echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
+            cd $PROJECT_DIR
             
-            echo ">> Efetuando login no GitHub Container Registry..."
-            echo ${{ secrets.GIT_PAT }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            echo ">>> Configurando autenticação do Docker..."
+            mkdir -p ~/.docker
+            echo "${{ secrets.DOCKER_CONFIG_JSON }}" > ~/.docker/config.json
             
-            echo ">> Puxando as imagens mais recentes do registry..."
-            docker compose pull
+            echo ">>> Puxando as imagens mais recentes..."
+            sudo docker compose pull
             
-            echo ">> Reiniciando os serviços com as novas imagens..."
-            docker compose up -d --remove-orphans
+            echo ">>> Verificando o hash da imagem do backend..."
+            LOCAL_BACKEND_DIGEST=$(sudo docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
+
+            if [ "$LOCAL_BACKEND_DIGEST" != "$EXPECTED_BACKEND_DIGEST" ]; then
+              echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_DIGEST) não corresponde ao esperado ($EXPECTED_BACKEND_DIGEST)."
+              exit 1
+            fi
+            echo "✅ Verificação de hash bem-sucedida."
+
+            echo ">>> Reiniciando os serviços..."
+            sudo docker compose up -d
             
-            echo ">> Aguardando o backend ficar saudável..."
+            echo ">>> Aguardando os contêineres..."
             sleep 15
             
-            echo ">> Inicializando o banco de dados e o usuário admin (se necessário)..."
-            docker compose exec backend python init_admin.py
+            echo ">>> Inicializando banco de dados..."
+            sudo docker compose exec backend python /app/init_admin.py
             
-            echo ">> Limpando imagens Docker antigas e não utilizadas..."
-            docker image prune -af
+            echo ">>> Limpando imagens Docker não utilizadas..."
+            sudo docker image prune -af
             
-            echo ">> ✅ Deploy finalizado com sucesso!"
+            echo "✅ Deploy finalizado com sucesso!"
+
+  validate:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Aguardar a inicialização dos serviços na VPS
+        run: sleep 30
+      - name: 2. Validar o endpoint do Frontend
+        run: |
+          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
+          echo "✅ O Frontend está online."
+      - name: 3. Validar o endpoint do Backend (Health Check)
+        run: |
+          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
+          echo "✅ O Backend está online."
