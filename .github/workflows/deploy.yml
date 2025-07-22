@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 94 - Revisado em 22/07/2025
+# Versão 95 - Revisado em 22/07/2025
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -153,6 +153,17 @@ jobs:
 
             echo "[`date`] Inicializando dados"
             docker compose exec backend python /app/init_admin.py
+
+            echo "[`date`] Validando regras do nginx"
+            if curl -sI http://localhost/ | grep -q "302.*cloudezapp"; then
+              echo "❌ Nginx está redirecionando para cloudezapp.io"
+              exit 1
+            fi
+            if ! curl -sSf http://localhost/api/health | grep -q '"status":"healthy"'; then
+              echo "❌ Nginx não está encaminhando corretamente para o backend"
+              exit 1
+            fi
+            echo "✅ Nginx configurado corretamente"
 
             echo "[`date`] Limpando cache de imagens"
             docker system prune -af --volumes
