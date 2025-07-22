@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 98 - Final com Ambiente e Validação
+# Versão 100 - Final com Validação Separada
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -81,7 +81,7 @@ jobs:
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    environment: prod # <-- CORREÇÃO CRUCIAL APLICADA
+    environment: prod
     steps:
       - name: Deploy via SSH na VPS
         uses: appleboy/ssh-action@master
@@ -94,7 +94,11 @@ jobs:
           script: |
             set -e
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
-            
+            BACKEND_IMAGE="${{ env.IMAGE_NAME_BACKEND }}"
+            FRONTEND_IMAGE="${{ env.IMAGE_NAME_FRONTEND }}"
+            BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
+            FRONTEND_DIGEST="${{ needs.build_and_push.outputs.frontend_digest }}"
+
             echo "[`date`] Acessando o projeto..."
             cd $PROJECT_DIR
 
@@ -106,17 +110,20 @@ jobs:
             docker compose down --remove-orphans
             
             echo "[`date`] Baixando imagens atualizadas..."
-            docker compose pull
+            docker pull $BACKEND_IMAGE@$BACKEND_DIGEST
+            docker tag $BACKEND_IMAGE@$BACKEND_DIGEST $BACKEND_IMAGE:latest
+            docker pull $FRONTEND_IMAGE@$FRONTEND_DIGEST
+            docker tag $FRONTEND_IMAGE@$FRONTEND_DIGEST $FRONTEND_IMAGE:latest
 
-            echo "[`date`] Subindo novos containers..."
+            echo "[`date`] Subindo containers..."
             docker compose up -d
-            
+
             echo "[`date`] ✅ Sequência de deploy enviada para a VPS."
 
   validate:
     needs: deploy
     runs-on: ubuntu-latest
-    environment: prod # <-- AMBIENTE TAMBÉM NECESSÁRIO AQUI
+    environment: prod
     steps:
       - name: Validar saúde da aplicação na VPS
         uses: appleboy/ssh-action@master
@@ -140,8 +147,8 @@ jobs:
             echo ">>> Exibindo logs do backend para diagnóstico..."
             docker compose logs backend --tail=100
             
-            echo ">>> Testando o health check da API..."
-            if curl -sSf --retry 3 --retry-delay 5 http://localhost:8000/api/health | grep -q '"status":"healthy"'; then
+            echo ">>> Testando o health check da API em http://setormusicalms.art.br/api/health"
+            if curl -sSf --retry 3 --retry-delay 5 http://setormusicalms.art.br/api/health | grep -q '"status":"healthy"'; then
               echo "✅ Health check da API bem-sucedido!"
             else
               echo "❌ ERRO: Health check da API falhou."
