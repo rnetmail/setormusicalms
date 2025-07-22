@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 73 22/07/2025 16:55
+# Versão 88 22/07/2025 21:30
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -35,7 +35,7 @@ jobs:
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
-          docker compose exec backend python /app/init_admin.py
+          docker compose exec backend python init_admin.py
       - name: 4. Instalar dependências e Executar Testes
         run: |
           pip install -r fastapi_backend/requirements.txt
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - name: Deploy e Verificação na VPS
+      - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -90,7 +90,8 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
-            PROJECT_DIR="/home/${{ secrets.VPS_SSH_USER }}/setormusicalms"
+            # CORREÇÃO: O caminho agora é lido diretamente do segredo que você configurou
+            PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
             EXPECTED_BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
 
             echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
