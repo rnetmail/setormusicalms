@@ -1,5 +1,5 @@
 # docker-compose.yml
-# Versão 60 19/07/2025 19:00
+# Versão 61 22/07/2025 15:15
 services:
   backend:
     build: ./fastapi_backend
@@ -9,7 +9,7 @@ services:
       - ./fastapi_backend:/app
       - sqlite_data:/app/data
     ports:
-      # O backend expõe a porta 8000, conforme esperado pelo Nginx.
+      # Expõe a porta 8000 do backend para o Nginx da VPS
       - "8000:8000"
     environment:
       - DATABASE_URL=sqlite:///data/setormusical.db
@@ -21,8 +21,8 @@ services:
       dockerfile: Dockerfile
     container_name: setormusicalms-frontend
     ports:
-      # CORREÇÃO: Mapeia a porta 80 do contentor para a porta 3000 do host,
-      # alinhando-se com a regra 'proxy_pass' do Nginx da VPS.
+      # CORREÇÃO: Mapeia a porta 3000 do contêiner (onde o 'serve' roda)
+      # para a porta 3000 do host, alinhando com a configuração do Nginx da VPS.
       - "3000:80"
     depends_on:
       - backend
