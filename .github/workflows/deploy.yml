@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 92 22/07/2025 22:05
+# Versão 93 22/07/2025 22:20
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -35,7 +35,7 @@ jobs:
             sleep 5
           done
           echo "✅ API está pronta e a responder!"
-          docker compose exec backend python init_admin.py
+          docker compose exec backend python /app/init_admin.py
       - name: 4. Instalar dependências e Executar Testes
         run: |
           pip install -r fastapi_backend/requirements.txt
@@ -101,13 +101,13 @@ jobs:
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
             
             echo ">>> Parando serviços atuais (se existirem)..."
-            sudo docker compose down --remove-orphans
+            docker compose down --remove-orphans
             
             echo ">>> Puxando as imagens mais recentes..."
-            sudo docker compose pull
+            docker compose pull
             
             echo ">>> Verificando o hash da imagem do backend..."
-            LOCAL_BACKEND_DIGEST=$(sudo docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
+            LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
 
             if [ "$LOCAL_BACKEND_DIGEST" != "$EXPECTED_BACKEND_DIGEST" ]; then
               echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_DIGEST) não corresponde ao esperado ($EXPECTED_BACKEND_DIGEST)."
@@ -116,16 +116,16 @@ jobs:
             echo "✅ Verificação de hash bem-sucedida."
 
             echo ">>> Reiniciando os serviços..."
-            sudo docker compose up -d
+            docker compose up -d
             
             echo ">>> Aguardando os contêineres..."
             sleep 15
             
             echo ">>> Inicializando banco de dados..."
-            sudo docker compose exec backend python init_admin.py
+            docker compose exec backend python /app/init_admin.py
             
             echo ">>> Limpando imagens Docker não utilizadas..."
-            sudo docker image prune -af
+            docker image prune -af
             
             echo "✅ Deploy finalizado com sucesso!"
 
