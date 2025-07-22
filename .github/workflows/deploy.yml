@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 72 22/07/2025 16:20
+# Versão 71 22/07/2025 16:45
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -73,16 +73,28 @@ jobs:
           dockerfile: Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:latest
+      - name: Salvar Hash da Imagem em Artefato
+        run: |
+          mkdir -p artifacts
+          echo "${{ steps.push_backend.outputs.digest }}" > artifacts/backend_digest.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-digest
+          path: artifacts/backend_digest.txt
 
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: prod
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-digest
+          path: /tmp
       - name: Deploy e Verificação na VPS
         uses: appleboy/ssh-action@master
         env:
-          EXPECTED_BACKEND_DIGEST: ${{ needs.build_and_push.outputs.backend_digest }}
+          EXPECTED_BACKEND_DIGEST_FROM_FILE: ${{ steps.download-artifact.outputs.download-path }}/backend_digest.txt
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME_BACKEND: ${{ env.IMAGE_NAME_BACKEND }}
           DOCKER_CONFIG: ${{ secrets.DOCKER_CONFIG_JSON }}
@@ -111,16 +123,13 @@ jobs:
             $SUDO_CMD docker compose pull
             
             echo ">>> Verificando o hash da imagem do backend..."
-            # CORREÇÃO: Usando um arquivo temporário para capturar a saída de forma segura
             $SUDO_CMD docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest > /tmp/digest.txt
             LOCAL_BACKEND_DIGEST=$(cat /tmp/digest.txt)
+            EXPECTED_BACKEND_DIGEST=$(cat $EXPECTED_BACKEND_DIGEST_FROM_FILE)
             rm /tmp/digest.txt
 
-            LOCAL_BACKEND_HASH=$(echo $LOCAL_BACKEND_DIGEST | cut -d'@' -f2)
-            EXPECTED_BACKEND_HASH=$(echo $EXPECTED_BACKEND_DIGEST | cut -d'@' -f2)
-
-            if [ "$LOCAL_BACKEND_HASH" != "$EXPECTED_BACKEND_HASH" ]; then
-              echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_HASH) não corresponde ao esperado ($EXPECTED_BACKEND_HASH)."
+            if [ "$LOCAL_BACKEND_DIGEST" != "$EXPECTED_BACKEND_DIGEST" ]; then
+              echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_DIGEST) não corresponde ao esperado ($EXPECTED_BACKEND_DIGEST)."
               exit 1
             fi
             echo "✅ Verificação de hash bem-sucedida."
