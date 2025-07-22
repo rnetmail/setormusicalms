@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 66 22/07/2025 15:25
+# Versão 68 22/07/2025 15:40
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -86,7 +86,8 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME_BACKEND: ${{ env.IMAGE_NAME_BACKEND }}
           DOCKER_CONFIG: ${{ secrets.DOCKER_CONFIG_JSON }}
-          PROJECT_DIR: /home/${{ secrets.VPS_SSH_USER }}/setormusical/setormusicalms
+          # CORREÇÃO: Removido o "/setormusical" extra do caminho
+          PROJECT_DIR: /home/${{ secrets.VPS_SSH_USER }}/setormusicalms
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_SSH_USER }}
@@ -102,13 +103,13 @@ jobs:
             echo "$DOCKER_CONFIG" > ~/.docker/config.json
             
             echo ">>> Limpando imagens Docker antigas..."
-            docker image prune -af
+            sudo docker image prune -af
 
             echo ">>> Puxando as imagens mais recentes..."
-            docker compose pull
+            sudo docker compose pull
             
             echo ">>> Verificando o hash da imagem do backend..."
-            LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest)
+            LOCAL_BACKEND_DIGEST=$(sudo docker inspect --format='{{index .RepoDigests 0}}' $REGISTRY/$IMAGE_NAME_BACKEND:latest)
             LOCAL_BACKEND_HASH=$(echo $LOCAL_BACKEND_DIGEST | cut -d'@' -f2)
             EXPECTED_BACKEND_HASH=$(echo $EXPECTED_BACKEND_DIGEST | cut -d'@' -f2)
             if [ "$LOCAL_BACKEND_HASH" != "$EXPECTED_BACKEND_HASH" ]; then
@@ -118,13 +119,13 @@ jobs:
             echo "✅ Verificação de hash bem-sucedida."
 
             echo ">>> Reiniciando os serviços..."
-            docker compose up -d
+            sudo docker compose up -d
             
             echo ">>> Aguardando os contêineres..."
             sleep 15
             
             echo ">>> Inicializando banco de dados..."
-            docker compose exec backend python /app/init_admin.py
+            sudo docker compose exec backend python /app/init_admin.py
             
             echo "✅ Deploy finalizado com sucesso!"
 
