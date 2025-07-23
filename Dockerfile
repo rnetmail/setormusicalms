@@ -1,5 +1,5 @@
-// Dockerfile
-// Versão 36 22/07/2025 21:05
+# Dockerfile
+# Versão 37 22/07/2025 23:35
 
 # --- Estágio 1: Build da Aplicação React ---
 FROM node:18-alpine AS build-stage
