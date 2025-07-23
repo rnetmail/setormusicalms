@@ -1,138 +1,76 @@
-# .github/workflows/deploy.yml
-# Versão 97 23/07/2025 00:29
-
-name: CI/CD - Testar, Construir, Implementar e Validar
+name: CI/CD - Build, Test, Deploy
 
 on:
   push:
-    branches: [main]
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
-  IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
-  PROJECT_PATH_ON_VPS: /srv/setormusicalmsartbr.c2c3ddc6.configr.cloud/www
+    branches:
+      - main
 
 jobs:
-  test:
+  build-test-deploy:
+    name: Etapas CI/CD - Testar, Construir, Deploy, Validar
     runs-on: ubuntu-latest
+
     steps:
-      - name: 1. Checkout do código
-        uses: actions/checkout@v4
-      - name: 2. Iniciar serviços com Docker Compose
-        run: docker compose up -d --build
-      - name: 3. Aguardar e Verificar a Saúde da API
-        run: |
-          echo "A aguardar que a API esteja pronta..."
-          timeout=90
-          while ! curl -sSf http://localhost:8000/api/health; do
-            timeout=$((timeout - 5))
-            if [ $timeout -le 0 ]; then
-              echo "A API não ficou pronta em 90 segundos."
-              docker compose logs backend
-              exit 1
-            fi
-            sleep 5
-          done
-          echo "✅ API está pronta e a responder!"
-          docker compose exec backend python /app/init_admin.py
-      - name: 4. Instalar dependências e Executar Testes
-        run: |
-          pip install -r fastapi_backend/requirements.txt
-          playwright install
-          pytest fastapi_backend/
-      - name: 5. Parar os serviços após os testes
-        if: always()
+      # Etapa 1 - Checkout e Testes
+      - name: Checkout do Repositório
+        uses: actions/checkout@v3
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Criar Rede de Teste
+        run: docker network create testnet || true
+
+      - name: Construir Imagens de Teste
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml build --no-cache
+
+      - name: Subir Contêineres para Teste
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+
+      - name: Executar Testes Automatizados (Pytest)
+        run: docker compose exec backend pytest
+
+      - name: Executar Testes de Qualidade de Código (Opcional)
+        run: docker compose exec backend flake8 app || true
+
+      - name: Encerrar Contêineres de Teste
         run: docker compose down
 
-  build_and_push:
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      backend_digest: ${{ steps.push_backend.outputs.digest }}
-    steps:
-      - uses: actions/checkout@v4
+      # Etapa 2 - Build e Push para GHCR
       - name: Login no GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v2
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build e Push da imagem do Backend
-        id: push_backend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./fastapi_backend
-          push: true
-          tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
-      - name: Build e Push da imagem do Frontend (Nginx)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          dockerfile: Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
-  deploy:
-    needs: build_and_push
-    runs-on: ubuntu-latest
-    environment: prod
-    steps:
-      - name: Deploy na VPS via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_SSH_USER }}
-          password: ${{ secrets.VPS_SSH_PASS }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          script: |
-            set -e
-            PROJECT_DIR="${{ env.PROJECT_PATH_ON_VPS }}"
+      - name: Tag das Imagens e Push para GHCR
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/backend:latest ./backend
+          docker build -t ghcr.io/${{ github.repository }}/nginx:latest ./nginx
 
-            echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
-            cd $PROJECT_DIR
-            
-            echo ">>> A atualizar o código a partir do repositório..."
-            git pull origin main
-            
-            echo ">>> Configurando autenticação do Docker..."
-            mkdir -p ~/.docker
-            echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
-            
-            echo ">>> Parando serviços atuais (se existirem)..."
-            docker compose down --remove-orphans
-            
-            echo ">>> Puxando as imagens mais recentes..."
+          docker push ghcr.io/${{ github.repository }}/backend:latest
+          docker push ghcr.io/${{ github.repository }}/nginx:latest
+
+      # Etapa 3 - Deploy na VPS via SSH
+      - name: Deploy na VPS
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            echo ">> Indo para o diretório do projeto"
+            cd ~/setormusicalms
+
+            echo ">> Parando serviços antigos..."
+            docker compose down
+
+            echo ">> Atualizando imagens..."
             docker compose pull
-            
-            echo ">>> Reiniciando os serviços..."
-            docker compose up -d
-            
-            echo ">>> Aguardando os contêineres..."
-            sleep 15
-            
-            echo ">>> Inicializando banco de dados..."
-            docker compose exec backend python /app/init_admin.py
-            
-            echo ">>> Limpando imagens Docker não utilizadas..."
-            docker image prune -af
-            
-            echo "✅ Deploy finalizado com sucesso!"
 
-  validate:
-    needs: deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: 1. Aguardar a inicialização dos serviços na VPS
-        run: sleep 30
-      - name: 2. Validar o endpoint do Frontend
+            echo ">> Subindo a nova versão..."
+            docker compose up -d
+          EOF
+
+      # Etapa 4 - Validação de Funcionalidade Pós-Deploy
+      - name: Validar Endpoints da Aplicação
         run: |
-          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
-          echo "✅ O Frontend está online."
-      - name: 3. Validar o endpoint do Backend (Health Check)
-        run: |
-          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
-          echo "✅ O Backend está online."
+          curl -f http://setormusicalms.art.br/api/repertorio
+          curl -f http://setormusicalms.art.br
