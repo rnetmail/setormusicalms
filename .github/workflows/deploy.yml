@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 95 23/07/2025 00:15
+# Versão 96 23/07/2025 00:20
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -11,7 +11,8 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
   IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
-  PROJECT_PATH_ON_VPS: /srv/setormusicalmsartbr.c2c3ddc6.configr.cloud
+  # CORREÇÃO FINAL: Aponta para o subdiretório 'www' onde o projeto está localizado.
+  PROJECT_PATH_ON_VPS: /srv/setormusicalmsartbr.c2c3ddc6.configr.cloud/www
 
 jobs:
   test:
@@ -99,7 +100,6 @@ jobs:
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
             
-            # CORREÇÃO: Removido 'sudo' dos comandos docker
             echo ">>> Parando serviços atuais (se existirem)..."
             docker compose down --remove-orphans
             
