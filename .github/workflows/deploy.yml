@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 92 22/07/2025 22:05
+# Versão 93 22/07/2025 23:59
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -11,6 +11,8 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
   IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
+  # CORREÇÃO: Define o caminho estático e correto para o projeto na VPS.
+  PROJECT_PATH_ON_VPS: /setormusical/setormusicalms
 
 jobs:
   test:
@@ -89,8 +91,7 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
-            PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
-            EXPECTED_BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
+            PROJECT_DIR="${{ env.PROJECT_PATH_ON_VPS }}"
 
             echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
@@ -107,6 +108,7 @@ jobs:
             
             echo ">>> Verificando o hash da imagem do backend..."
             LOCAL_BACKEND_DIGEST=$(sudo docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
+            EXPECTED_BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
 
             if [ "$LOCAL_BACKEND_DIGEST" != "$EXPECTED_BACKEND_DIGEST" ]; then
               echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_DIGEST) não corresponde ao esperado ($EXPECTED_BACKEND_DIGEST)."
