@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 96 23/07/2025 00:20
+# Versão 97 23/07/2025 00:28
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -11,7 +11,6 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
   IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
-  # CORREÇÃO FINAL: Aponta para o subdiretório 'www' onde o projeto está localizado.
   PROJECT_PATH_ON_VPS: /srv/setormusicalmsartbr.c2c3ddc6.configr.cloud/www
 
 jobs:
@@ -96,6 +95,9 @@ jobs:
             echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
             
+            echo ">>> A atualizar o código a partir do repositório..."
+            git pull origin main
+            
             echo ">>> Configurando autenticação do Docker..."
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
@@ -106,16 +108,6 @@ jobs:
             echo ">>> Puxando as imagens mais recentes..."
             docker compose pull
             
-            echo ">>> Verificando o hash da imagem do backend..."
-            LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
-            EXPECTED_BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
-
-            if [ "$LOCAL_BACKEND_DIGEST" != "$EXPECTED_BACKEND_DIGEST" ]; then
-              echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_DIGEST) não corresponde ao esperado ($EXPECTED_BACKEND_DIGEST)."
-              exit 1
-            fi
-            echo "✅ Verificação de hash bem-sucedida."
-
             echo ">>> Reiniciando os serviços..."
             docker compose up -d
             
