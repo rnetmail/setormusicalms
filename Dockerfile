@@ -1,5 +1,5 @@
-# Dockerfile
-# Versão 34 - Corrigido e Validado em 22/07/2025
+// Dockerfile
+// Versão 36 22/07/2025 21:05
 
 # --- Estágio 1: Build da Aplicação React ---
 FROM node:18-alpine AS build-stage
@@ -10,19 +10,20 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# --- Estágio 2: Servidor de Produção ---
-FROM node:18-alpine
+# --- Estágio 2: Servidor de Produção Nginx ---
+FROM nginx:stable-alpine
 
-WORKDIR /app
+# Copia os ficheiros estáticos gerados no estágio anterior
+COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# Instala apenas o 'serve' como dependência global
-RUN npm install -g serve
+# Remove a configuração padrão do Nginx
+RUN rm /etc/nginx/conf.d/default.conf
 
-# Copia os arquivos estáticos do build
-COPY --from=build-stage /app/dist .
+# Copia o nosso ficheiro de configuração personalizado
+COPY nginx.conf /etc/nginx/conf.d
 
-# Expondo a porta padrão do 'serve'
-EXPOSE 8001
+# Expõe a porta 80, que é a porta padrão do Nginx
+EXPOSE 80
 
-# Executa o servidor serve na porta 8001
-CMD ["serve", "-s", ".", "-l", "8001"]
+# Comando para iniciar o Nginx
+CMD ["nginx", "-g", "daemon off;"]
