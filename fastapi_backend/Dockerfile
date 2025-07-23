@@ -1,5 +1,5 @@
 # fastapi_backend/Dockerfile
-# Versão 44 17/07/2025 23:20
+# Versão 45 22/07/2025 23:30
 
 # Use a imagem oficial do Python como imagem base.
 # A versão 'slim' é menor e boa para produção.
@@ -16,7 +16,6 @@ ENV PYTHONUNBUFFERED 1
 # Copia primeiro o ficheiro de requisitos para aproveitar o cache do Docker.
 # Se o ficheiro não mudar, o Docker reutiliza a camada e não reinstala tudo.
 COPY requirements.txt .
-
 # Instala as dependências Python.
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
@@ -25,7 +24,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # A porta que a aplicação vai escutar dentro do contentor.
-# O docker-compose fará o mapeamento desta porta para a porta 8001 no anfitrião.
+# O docker-compose fará o mapeamento desta porta para a porta 8000 no anfitrião.
 EXPOSE 8000
 
 # O comando para iniciar a aplicação é definido no docker-compose.yml,
