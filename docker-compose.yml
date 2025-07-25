@@ -1,30 +1,28 @@
-# /home/setormusicalms/setormusicalms/docker-compose.yml
-# Versão Final Corrigida - 25/07/2025
-
+# /docker-compose.yml
+# Versão 01 25/07/2025 17:20
 services:
   backend:
-    image: ghcr.io/rnetmail/setormusicalms-backend:latest
+    build: ./fastapi_backend
     container_name: setormusicalms-backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - sqlite_data:/app/data
     ports:
-      # Expõe a porta 8000 para o Nginx da VPS
       - "8000:8000"
     environment:
-      # CORREÇÃO DEFINITIVA: Garante que a aplicação use SQLite
       - DATABASE_URL=sqlite:///data/setormusical.db
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/rnetmail/setormusicalms-frontend:latest
+    build: .
     container_name: setormusicalms-frontend
     ports:
-      # Expõe a porta 3000 interna para a 8001 da VPS, que o Nginx externo espera
-      - "8001:3000"
+      # A porta interna 80 do Nginx será mapeada para a 8001 da VPS
+      - "8001:80"
     depends_on:
       - backend
     restart: unless-stopped
 
 volumes:
   sqlite_data:
+    driver: local
