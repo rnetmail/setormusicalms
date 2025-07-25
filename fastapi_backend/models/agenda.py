@@ -1,7 +1,7 @@
 # fastapi_backend/models/agenda.py
-# Versão 23 17/07/2025 22:19
+# Versão 01 25/07/2025 11:38
 from sqlalchemy import Column, Integer, String, Boolean, Date, Text
-from app.database import Base
+from ..app.database import Base
 
 class AgendaItem(Base):
     """
@@ -10,7 +10,7 @@ class AgendaItem(Base):
     __tablename__ = "agenda_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    group = Column(String(20), nullable=False)  # Ex: 'Coral', 'Orquestra', 'Setor'
+    group = Column(String(50), nullable=False, index=True)  # "Coral", "Orquestra", ou "Setor"
     date = Column(Date, nullable=False)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=False)
