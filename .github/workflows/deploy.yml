@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 109 - Final e Simplificada
+# Versão 109 - Final e Simplificada 
 
 name: CI/CD - Construir e Implementar
 
