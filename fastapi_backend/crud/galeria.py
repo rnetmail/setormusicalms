@@ -1,10 +1,10 @@
 # fastapi_backend/crud/galeria.py
-# Versão 01 21/07/2025 18:12
+# Versão 01 25/07/2025 14:00
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from models.galeria import GaleriaItem
-from schemas.galeria import GaleriaItemCreate, GaleriaItemUpdate
+from ..models.galeria import GaleriaItem
+from ..schemas.galeria import GaleriaItemCreate, GaleriaItemUpdate
 
 def get_galeria_item(db: Session, item_id: int) -> Optional[GaleriaItem]:
     """Busca um item da galeria específico pelo seu ID."""
