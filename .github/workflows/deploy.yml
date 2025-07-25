@@ -1,7 +1,7 @@
 # .github/workflows/deploy.yml
-# Versão 111 - Final e Simplificada
+# Versão 112 - MODO DIAGNÓSTICO
 
-name: CI/CD - Construir e Implementar
+name: CI/CD - Diagnosticar Ambiente de Produção
 
 on:
   push:
@@ -27,26 +27,17 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build e Push Backend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./fastapi_backend
-          push: true
-          tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
-      - name: Build e Push Frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          dockerfile: Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
+      - name: Build e Push das Imagens
+        run: |
+          docker build -t ${{ env.IMAGE_NAME_BACKEND }}:latest ./fastapi_backend && docker push ${{ env.IMAGE_NAME_BACKEND }}:latest
+          docker build -t ${{ env.IMAGE_NAME_FRONTEND }}:latest . && docker push ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
-  deploy_and_validate:
+  deploy_and_diagnose:
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - name: Deploy e Validação na VPS
+      - name: Conectar, Fazer Deploy e Coletar Diagnósticos
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -58,33 +49,34 @@ jobs:
             set -e
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
 
-            echo ">>> [1/6] Acessando o diretório do projeto: $PROJECT_DIR"
+            echo ">>> [1/8] Acessando o diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
             
-            echo ">>> [2/6] Autenticando no GHCR..."
+            echo ">>> [2/8] DADO-CHAVE: Exibindo o docker-compose.yml ATUAL da VPS..."
+            cat docker-compose.yml
+            
+            echo ">>> [3/8] Autenticando no GHCR..."
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
 
-            echo ">>> [3/6] Parando e removendo serviços antigos..."
+            echo ">>> [4/8] Parando e removendo serviços antigos..."
             docker compose down --remove-orphans
             
-            echo ">>> [4/6] Baixando as imagens mais recentes..."
+            echo ">>> [5/8] Baixando as imagens mais recentes..."
             docker compose pull
 
-            echo ">>> [5/6] Subindo os novos contêineres..."
+            echo ">>> [6/8] Subindo os novos contêineres..."
             docker compose up -d
 
-            echo ">>> [6/6] Aguardando 30s para a inicialização completa..."
-            sleep 30
-
-            echo ">>> Verificando saúde da aplicação em produção..."
-            if curl -sSf --retry 3 http://setormusicalms.art.br/api/health | grep -q '"status":"healthy"'; then
-              echo "✅ Aplicação online e saudável!"
-              docker compose exec backend python /app/init_admin.py
-              docker image prune -af
-            else
-              echo "❌ ERRO: A API não respondeu no domínio."
-              echo "--- LOGS DO BACKEND ---"
-              docker compose logs backend --tail=100
-              exit 1
-            fi
+            echo ">>> [7/8] Aguardando 15s para a aplicação tentar iniciar..."
+            sleep 15
+            
+            echo ">>> [8/8] DADOS DE DIAGNÓSTICO FINAL:"
+            echo "--- STATUS DOS CONTÊINERES ---"
+            docker compose ps
+            echo "--- LOGS DO BACKEND ---"
+            docker compose logs backend --tail=100 || echo "Não foi possível obter logs do backend."
+            echo "--- VARIÁVEIS DE AMBIENTE DO BACKEND (INSPECIONANDO O CONTÊINER) ---"
+            docker inspect $(docker compose ps -q backend) | grep -A 10 "Env"
+            
+            echo ">>> ✅ Diagnóstico concluído."
