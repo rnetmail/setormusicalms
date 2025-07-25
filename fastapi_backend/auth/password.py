@@ -1,8 +1,8 @@
 # fastapi_backend/auth/password.py
-# Versão 07 17/07/2025 23:50
+# Versão 01 25/07/2025 11:08
 from passlib.context import CryptContext
 
-# Define o contexto de criptografia, especificando o bcrypt como o esquema de hashing.
+# Cria um contexto para o hashing de senhas, especificando o algoritmo bcrypt.
 # Esta é a prática recomendada para o armazenamento seguro de senhas.
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
