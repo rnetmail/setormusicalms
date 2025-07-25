@@ -1,10 +1,10 @@
 # fastapi_backend/crud/historia.py
-# Versão 01 21/07/2025 10:52
+# Versão 01 25/07/2025 13:53
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from models.historia import HistoriaItem
-from schemas.historia import HistoriaItemCreate, HistoriaItemUpdate
+from ..models.historia import HistoriaItem
+from ..schemas.historia import HistoriaItemCreate, HistoriaItemUpdate
 
 def get_historia_item(db: Session, item_id: int) -> Optional[HistoriaItem]:
     """Busca um item da história específico pelo seu ID."""
@@ -24,3 +24,19 @@ def create_historia_item(db: Session, item: HistoriaItemCreate) -> HistoriaItem:
 
 def update_historia_item(db: Session, item_id: int, item_update: HistoriaItemUpdate) -> Optional[HistoriaItem]:
     """Atualiza um item da história existente."""
+    db_item = db.query(HistoriaItem).filter(HistoriaItem.id == item_id).first()
+    if db_item:
+        update_data = item_update.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_item, field, value)
+        db.commit()
+        db.refresh(db_item)
+    return db_item
+
+def delete_historia_item(db: Session, item_id: int) -> Optional[HistoriaItem]:
+    """Remove um item da história do banco de dados."""
+    db_item = db.query(HistoriaItem).filter(HistoriaItem.id == item_id).first()
+    if db_item:
+        db.delete(db_item)
+        db.commit()
+    return db_item
