@@ -1,9 +1,27 @@
 # fastapi_backend/crud/__init__.py
-# Versão 72 21/07/2025 18:19
+# Versão 01 25/07/2025 11:22
+# Este arquivo transforma o diretório 'crud' em um pacote Python
+# e define a sua interface pública.
 
-from . import user
-from . import repertorio
-from . import agenda
-from . import recado
-from . import historia
-from . import galeria
+from .user import (
+    get_user,
+    get_user_by_username,
+    get_user_by_email,
+    get_users,
+    create_user,
+    update_user,
+    delete_user,
+    authenticate_user,
+)
+
+# A lista __all__ define quais nomes são exportados quando se utiliza "from crud import *"
+__all__ = [
+    "get_user",
+    "get_user_by_username",
+    "get_user_by_email",
+    "get_users",
+    "create_user",
+    "update_user",
+    "delete_user",
+    "authenticate_user",
+]
