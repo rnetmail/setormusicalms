@@ -1,5 +1,5 @@
 # fastapi_backend/schemas/galeria.py
-# Versão 01 21/07/2025 18:10
+# Versão 01 25/07/2025 13:58
 from pydantic import BaseModel, HttpUrl
 from typing import Optional
 from datetime import date
@@ -9,7 +9,7 @@ class GaleriaItemBase(BaseModel):
     group: str
     title: str
     description: Optional[str] = None
-    imageUrl: HttpUrl
+    imageUrl: str  # Usamos str para aceitar URLs processadas/internas
     date: date
 
 class GaleriaItemCreate(GaleriaItemBase):
@@ -21,7 +21,7 @@ class GaleriaItemUpdate(BaseModel):
     group: Optional[str] = None
     title: Optional[str] = None
     description: Optional[str] = None
-    imageUrl: Optional[HttpUrl] = None
+    imageUrl: Optional[str] = None
     date: Optional[date] = None
 
 class GaleriaItem(GaleriaItemBase):
