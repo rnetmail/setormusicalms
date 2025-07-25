@@ -1,26 +1,24 @@
-# docker-compose.yml
-# Versão 106 - Final para Produção
+# /home/setormusicalms/setormusicalms/docker-compose.yml
+# Versão Final Corrigida - 25/07/2025
 
 services:
   backend:
-    # Usa a imagem construída pelo GitHub Actions
     image: ghcr.io/rnetmail/setormusicalms-backend:latest
     container_name: setormusicalms-backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - sqlite_data:/app/data
-    # Expõe a porta para o Nginx da VPS
     ports:
+      # Expõe a porta 8000 para o Nginx da VPS
       - "8000:8000"
     restart: unless-stopped
 
   frontend:
-    # Usa a imagem construída pelo GitHub Actions
     image: ghcr.io/rnetmail/setormusicalms-frontend:latest
     container_name: setormusicalms-frontend
-    # Expõe a porta 3000 interna para a 8001 da VPS, que o Nginx externo espera
     ports:
-      - "8001:3000"
+      # Expõe a porta 80 do contêiner para a porta 3000 da VPS
+      - "3000:80"
     depends_on:
       - backend
     restart: unless-stopped
