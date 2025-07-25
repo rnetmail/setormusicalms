@@ -1,12 +1,9 @@
 # fastapi_backend/init_admin.py
-# Versão 25 18/07/2025 00:21
+# Versão 01 25/07/2025 14:35
 from app.database import SessionLocal, engine, Base
 from models.user import User
-# CORREÇÃO: Importa a função do novo ficheiro 'auth/password.py'.
 from auth.password import get_password_hash
-
-# Importa todos os modelos para garantir que o SQLAlchemy os reconheça ao criar as tabelas.
-from models import repertorio, agenda, recado
+import models # Importa todos os modelos para garantir a criação das tabelas
 
 def create_database_and_tables():
     """Cria o ficheiro do banco de dados e todas as tabelas, se não existirem."""
