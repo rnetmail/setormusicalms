@@ -1,5 +1,5 @@
 # fastapi_backend/schemas/agenda.py
-# Versão 24 17/07/2025 22:21
+# Versão 01 25/07/2025 13:38
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
