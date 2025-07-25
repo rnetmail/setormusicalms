@@ -1,5 +1,5 @@
 # fastapi_backend/models/__init__.py
-# Versão 02 25/07/2025 14:28
+# Versão 02 25/07/2025 17:15
 from .user import User
 from .repertorio import RepertorioItem
 from .agenda import AgendaItem
