@@ -1,31 +1,16 @@
-# fastapi_backend/schemas/historia.py
-# Versão 01 21/07/2025 10:50
-from pydantic import BaseModel, HttpUrl
-from typing import Optional
+# fastapi_backend/models/historia.py
+# Versão 01 25/07/2025 13:50
+from sqlalchemy import Column, Integer, String, Text
+from ..app.database import Base
 
-class HistoriaItemBase(BaseModel):
-    """Schema base com os campos comuns de um item da história."""
-    year: int
-    title: str
-    description: str
-    imageUrl: Optional[HttpUrl] = None
+class HistoriaItem(Base):
+    """
+    Modelo SQLAlchemy que representa a tabela 'historia_items' no banco de dados.
+    """
+    __tablename__ = "historia_items"
 
-class HistoriaItemCreate(HistoriaItemBase):
-    """Schema para a criação de um novo item da história."""
-    pass
-
-class HistoriaItemUpdate(BaseModel):
-    """Schema para atualização de um item da história. Todos os campos são opcionais."""
-    year: Optional[int] = None
-    title: Optional[str] = None
-    description: Optional[str] = None
-    imageUrl: Optional[HttpUrl] = None
-
-class HistoriaItem(HistoriaItemBase):
-    """Schema para retornar os dados de um item da história da API."""
-    id: int
-
-    class Config:
-        # Permite que o Pydantic mapeie os dados diretamente de um
-        # modelo SQLAlchemy para este schema.
-        from_attributes = True
+    id = Column(Integer, primary_key=True, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    imageUrl = Column(Text, nullable=True) # URL para a imagem do evento histórico
