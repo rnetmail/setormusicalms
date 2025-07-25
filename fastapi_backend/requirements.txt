@@ -1,9 +1,8 @@
 # fastapi_backend/requirements.txt
-# Versão 51 19/07/2025 13:45
+# Versão 01 25/07/2025 17:58
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 sqlalchemy==2.0.30
-# REMOVIDO: psycopg2-binary não é necessário para este projeto baseado em SQLite.
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
