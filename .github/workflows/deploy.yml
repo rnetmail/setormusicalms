@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 03 25/07/2025 18:05
+# Versão 04 25/07/2025 18:00
 name: CI/CD - Build, Push and Deploy
 
 on:
@@ -47,9 +47,6 @@ jobs:
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    # --- CORREÇÃO ADICIONADA AQUI ---
-    # Declara que este job será executado no ambiente 'prod'
-    # para ter acesso aos segredos corretos.
     environment: prod 
     steps:
       - name: Deploy na VPS
@@ -61,7 +58,8 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
-            PROJECT_DIR="/home/${{ secrets.VPS_SSH_USER }}/setormusicalms"
+            # CORREÇÃO: Utiliza o caminho correto do projeto na VPS, conforme a documentação.
+            PROJECT_DIR="/setormusical/setormusicalms"
             
             echo ">> Acedendo ao diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
@@ -78,16 +76,17 @@ jobs:
             echo ">> Puxando as imagens mais recentes..."
             docker compose pull
 
-            echo ">> (Re)Construindo as imagens localmente..."
+            echo ">> (Re)Construindo as imagens localmente para garantir as últimas alterações..."
             docker compose build --no-cache
 
             echo ">> Subindo os novos contêineres..."
             docker compose up -d
 
-            echo ">> Aguardando 15s para a inicialização..."
-            sleep 15
+            echo ">> Inicializando o banco de dados e o admin (se necessário)..."
+            docker compose exec backend python init_admin.py
             
-            echo ">> Verificando o estado dos contêineres..."
+            echo ">> Verificando o estado dos contêineres após 10s..."
+            sleep 10
             docker compose ps
 
             echo ">> Exibindo logs recentes do backend..."
