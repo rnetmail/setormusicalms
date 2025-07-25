@@ -1,7 +1,7 @@
 # fastapi_backend/models/recado.py
-# Versão 27 16/07/2025 22:25
+# Versão 01 25/07/2025 13:45
 from sqlalchemy import Column, Integer, String, Boolean, Date, Text
-from app.database import Base
+from ..app.database import Base
 
 class RecadoItem(Base):
     """
@@ -10,7 +10,7 @@ class RecadoItem(Base):
     __tablename__ = "recado_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    group = Column(String(20), nullable=False)  # Ex: 'Coral', 'Orquestra', 'Setor'
+    group = Column(String(50), nullable=False, index=True)  # "Coral", "Orquestra", ou "Setor"
     date = Column(Date, nullable=False)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=False)
