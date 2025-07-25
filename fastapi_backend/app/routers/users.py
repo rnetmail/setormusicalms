@@ -1,15 +1,14 @@
 # fastapi_backend/app/routers/users.py
-# Versão 14 18/07/2025 00:00
+# Versão 01 25/07/2025 14:10
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-# Importações absolutas, utilizando a nova estrutura de pacotes
-from app.database import get_db
-from auth.security import get_current_superuser
-from crud import user as crud_user
-from models import user as model_user
-from schemas import user as schema_user
+from ..app.database import get_db
+from ..auth.security import get_current_superuser
+from ..crud import user as crud_user
+from ..models import user as model_user
+from ..schemas import user as schema_user
 
 # Apenas superusuários podem acessar os endpoints deste router.
 router = APIRouter(
@@ -18,7 +17,7 @@ router = APIRouter(
     dependencies=[Depends(get_current_superuser)]
 )
 
-@router.post("/", response_model=schema_user.User, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=schema_user.User, status_code=status.HTTP_21_CREATED)
 def create_user(
     user: schema_user.UserCreate,
     db: Session = Depends(get_db)
@@ -73,5 +72,4 @@ def delete_user(
     db_user = crud_user.delete_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado para exclusão.")
-    # Retorna uma resposta vazia com status 204, como é a boa prática para DELETE.
     return
