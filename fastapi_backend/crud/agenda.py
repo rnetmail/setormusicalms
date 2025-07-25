@@ -1,11 +1,10 @@
 # fastapi_backend/crud/agenda.py
-# Versão 24 18/07/2025 00:20
+# Versão 01 25/07/2025 13:41
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-# Importações absolutas a partir da raiz do pacote 'fastapi_backend'
-from models.agenda import AgendaItem
-from schemas.agenda import AgendaItemCreate, AgendaItemUpdate
+from ..models.agenda import AgendaItem
+from ..schemas.agenda import AgendaItemCreate, AgendaItemUpdate
 
 def get_agenda_item(db: Session, item_id: int) -> Optional[AgendaItem]:
     """Busca um item da agenda específico pelo seu ID."""
@@ -19,7 +18,7 @@ def get_agenda_items(
     active_only: bool = True
 ) -> List[AgendaItem]:
     """
-    Lista os itens da agenda, com filtros opcionais para grupo e status, e com paginação.
+    Lista os itens da agenda, com filtros opcionais para grupo e status.
     Os resultados são ordenados por data (mais recente primeiro).
     """
     query = db.query(AgendaItem)
