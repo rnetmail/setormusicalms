@@ -1,11 +1,12 @@
 # fastapi_backend/app/main.py
-# Versão 01 25/07/2025 14:32
+# Versão 02 25/07/2025 17:35
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 
-from ..app.database import engine, Base
-from ..app.config import settings
-from ..app.routers import auth, users, repertorio, agenda, recados, historia, galeria
+# CORREÇÃO: As importações foram alteradas de relativas ("..") para absolutas.
+from app.database import engine, Base
+from app.config import settings
+from app.routers import auth, users, repertorio, agenda, recados, historia, galeria
 
 # Cria todas as tabelas no banco de dados se não existirem.
 Base.metadata.create_all(bind=engine)
