@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 02 25/07/2025 17:39
+# Versão 03 25/07/2025 18:05
 name: CI/CD - Build, Push and Deploy
 
 on:
@@ -47,6 +47,10 @@ jobs:
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
+    # --- CORREÇÃO ADICIONADA AQUI ---
+    # Declara que este job será executado no ambiente 'prod'
+    # para ter acesso aos segredos corretos.
+    environment: prod 
     steps:
       - name: Deploy na VPS
         uses: appleboy/ssh-action@master
@@ -62,7 +66,7 @@ jobs:
             echo ">> Acedendo ao diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
 
-            echo ">> [PASSO CRÍTICO] Atualizando o código-fonte a partir do Git..."
+            echo ">> Atualizando o código-fonte a partir do Git..."
             git pull origin main
             
             echo ">> Autenticando no GitHub Container Registry..."
@@ -74,14 +78,14 @@ jobs:
             echo ">> Puxando as imagens mais recentes..."
             docker compose pull
 
-            echo ">> (Re)Construindo as imagens localmente para garantir as últimas alterações..."
+            echo ">> (Re)Construindo as imagens localmente..."
             docker compose build --no-cache
 
             echo ">> Subindo os novos contêineres..."
             docker compose up -d
 
-            echo ">> Aguardando 10s para a inicialização..."
-            sleep 10
+            echo ">> Aguardando 15s para a inicialização..."
+            sleep 15
             
             echo ">> Verificando o estado dos contêineres..."
             docker compose ps
