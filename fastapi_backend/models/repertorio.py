@@ -1,7 +1,7 @@
 # fastapi_backend/models/repertorio.py
 # Versão 01 25/07/2025 11:25
 from sqlalchemy import Column, Integer, String, Boolean, JSON, Text
-from ..app.database import Base
+from app.database import Base
 
 class RepertorioItem(Base):
     """
