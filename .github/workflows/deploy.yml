@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 112 - MODO DIAGNÓSTICO
+# Versão  112 - MODO DIAGNÓSTICO
 
 name: CI/CD - Diagnosticar Ambiente de Produção
 
