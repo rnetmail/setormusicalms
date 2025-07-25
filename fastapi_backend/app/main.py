@@ -1,12 +1,11 @@
 # fastapi_backend/app/main.py
-# Versão 20 21/07/2025 18:15
+# Versão 01 25/07/2025 14:32
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 
-# Importações absolutas da estrutura do projeto
-from app.database import engine, Base
-from app.config import settings
-from app.routers import auth, users, repertorio, agenda, recados, historia, galeria
+from ..app.database import engine, Base
+from ..app.config import settings
+from ..app.routers import auth, users, repertorio, agenda, recados, historia, galeria
 
 # Cria todas as tabelas no banco de dados se não existirem.
 Base.metadata.create_all(bind=engine)
@@ -14,7 +13,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="Setor Musical MS API",
     description="API para gerenciamento do Setor Musical Mokiti Okada MS",
-    version="2.0.0"
+    version="1.0.0"
 )
 
 # Configura o CORS (Cross-Origin Resource Sharing)
@@ -36,11 +35,11 @@ api_router.include_router(repertorio.router)
 api_router.include_router(agenda.router)
 api_router.include_router(recados.router)
 api_router.include_router(historia.router)
-api_router.include_router(galeria.router) # <-- NOVA LINHA ADICIONADA
+api_router.include_router(galeria.router)
 
 @api_router.get("/health", tags=["Health Check"])
 def health_check():
-    """Endpoint de verificação de saúde para monitoramento e health checks do CI/CD."""
+    """Endpoint de verificação de saúde para monitoramento."""
     return {"status": "healthy", "message": "API está no ar e funcionando."}
 
 app.include_router(api_router)
