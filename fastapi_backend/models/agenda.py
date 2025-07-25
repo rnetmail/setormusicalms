@@ -1,7 +1,7 @@
 # fastapi_backend/models/agenda.py
 # Versão 01 25/07/2025 11:38
 from sqlalchemy import Column, Integer, String, Boolean, Date, Text
-from ..app.database import Base
+from app.database import Base
 
 class AgendaItem(Base):
     """
