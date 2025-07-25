@@ -1,5 +1,5 @@
 # fastapi_backend/schemas/repertorio.py
-# Versão 15 17/07/2025 17:18
+# Versão 01 25/07/2025 11:28
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
@@ -11,15 +11,13 @@ class RepertorioItemBase(BaseModel):
     year: int
     audio_url: Optional[str] = None
     video_url: Optional[str] = None
-    # O campo da thumbnail é opcional e será preenchido pelo backend.
-    video_thumbnail_url: Optional[str] = None
     sheet_music_url: str
     naipes: Optional[List[str]] = Field(default_factory=list)
     grupos: Optional[List[str]] = Field(default_factory=list)
     active: bool = True
 
 class RepertorioItemCreate(RepertorioItemBase):
-    """Schema usado para criar um novo item de repertório. Herda de Base."""
+    """Schema usado para criar um novo item de repertório."""
     pass
 
 class RepertorioItemUpdate(BaseModel):
@@ -33,17 +31,16 @@ class RepertorioItemUpdate(BaseModel):
     year: Optional[int] = None
     audio_url: Optional[str] = None
     video_url: Optional[str] = None
-    video_thumbnail_url: Optional[str] = None # Permitir atualização, embora seja gerenciado pelo backend.
     sheet_music_url: Optional[str] = None
     naipes: Optional[List[str]] = None
     grupos: Optional[List[str]] = None
     active: Optional[bool] = None
 
 class RepertorioItem(RepertorioItemBase):
-    """Schema usado para retornar os dados de um item de repertório da API, incluindo o ID."""
+    """Schema usado para retornar os dados de um item de repertório da API."""
     id: int
+    video_thumbnail_url: Optional[str] = None # Campo gerado pelo backend
 
     class Config:
-        # Permite que o Pydantic mapeie os dados diretamente de um
-        # modelo SQLAlchemy para este schema.
+        # Permite que o Pydantic mapeie os dados diretamente de um modelo SQLAlchemy.
         from_attributes = True
