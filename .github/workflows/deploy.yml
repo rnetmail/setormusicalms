@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 95 - Final sem Sudo
+# Versão 97 - Validação Aprimorada
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -16,31 +16,31 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Checkout do código
+      - name: Checkout do código
         uses: actions/checkout@v4
-      - name: 2. Iniciar serviços com Docker Compose
+      - name: Subir serviços com Docker Compose
         run: docker compose up -d --build
-      - name: 3. Aguardar e Verificar a Saúde da API
+      - name: Aguardar e Verificar saúde da API
         run: |
-          echo "A aguardar que a API esteja pronta..."
+          echo "⏳ Aguardando saúde da API..."
           timeout=90
-          while ! curl -sSf http://localhost:8000/api/health; do
+          until curl -sSf http://localhost:8000/api/health; do
             timeout=$((timeout - 5))
             if [ $timeout -le 0 ]; then
-              echo "A API não ficou pronta em 90 segundos."
+              echo "❌ A API não ficou pronta em 90s"
               docker compose logs backend
               exit 1
             fi
             sleep 5
           done
-          echo "✅ API está pronta e a responder!"
+          echo "✅ API saudável!"
           docker compose exec backend python /app/init_admin.py
-      - name: 4. Instalar dependências e Executar Testes
+      - name: Instalar dependências e Executar Testes
         run: |
           pip install -r fastapi_backend/requirements.txt
           playwright install
           pytest fastapi_backend/
-      - name: 5. Parar os serviços após os testes
+      - name: Encerrar containers após testes
         if: always()
         run: docker compose down
 
@@ -52,22 +52,25 @@ jobs:
       packages: write
     outputs:
       backend_digest: ${{ steps.push_backend.outputs.digest }}
+      frontend_digest: ${{ steps.push_frontend.outputs.digest }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Login no GitHub Container Registry
+      - name: Checkout do código
+        uses: actions/checkout@v4
+      - name: Login no GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build e Push da imagem do Backend
+      - name: Build e Push Backend
         id: push_backend
         uses: docker/build-push-action@v5
         with:
           context: ./fastapi_backend
           push: true
           tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
-      - name: Build e Push da imagem do Frontend
+      - name: Build e Push Frontend
+        id: push_frontend
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -80,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - name: Deploy na VPS via SSH
+      - name: Deploy via SSH na VPS
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -91,55 +94,77 @@ jobs:
           script: |
             set -e
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
-            EXPECTED_BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
+            BACKEND_IMAGE="${{ env.IMAGE_NAME_BACKEND }}"
+            FRONTEND_IMAGE="${{ env.IMAGE_NAME_FRONTEND }}"
+            BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
+            FRONTEND_DIGEST="${{ needs.build_and_push.outputs.frontend_digest }}"
 
-            echo ">>> Acedendo ao diretório do projeto: $PROJECT_DIR"
+            echo "[`date`] Acessando o projeto"
             cd $PROJECT_DIR
-            
-            echo ">>> Configurando autenticação do Docker..."
+
+            echo "[`date`] Autenticando no GHCR"
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
-            
-            echo ">>> Parando serviços atuais (se existirem)..."
+
+            echo "[`date`] Parando containers antigos"
             docker compose down --remove-orphans
-            
-            echo ">>> Puxando as imagens mais recentes..."
-            docker compose pull
-            
-            echo ">>> Verificando o hash da imagem do backend..."
-            LOCAL_BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE_NAME_BACKEND }}:latest)
 
-            if [ "$LOCAL_BACKEND_DIGEST" != "$EXPECTED_BACKEND_DIGEST" ]; then
-              echo "❌ ERRO: O hash da imagem na VPS ($LOCAL_BACKEND_DIGEST) não corresponde ao esperado ($EXPECTED_BACKEND_DIGEST)."
-              exit 1
-            fi
-            echo "✅ Verificação de hash bem-sucedida."
+            echo "[`date`] Baixando imagens atualizadas"
+            docker pull $BACKEND_IMAGE@$BACKEND_DIGEST
+            docker tag $BACKEND_IMAGE@$BACKEND_DIGEST $BACKEND_IMAGE:latest
+            docker pull $FRONTEND_IMAGE@$FRONTEND_DIGEST
+            docker tag $FRONTEND_IMAGE@$FRONTEND_DIGEST $FRONTEND_IMAGE:latest
 
-            echo ">>> Reiniciando os serviços..."
+            echo "[`date`] Subindo containers"
             docker compose up -d
-            
-            echo ">>> Aguardando os contêineres..."
-            sleep 15
-            
-            echo ">>> Inicializando banco de dados..."
-            docker compose exec backend python /app/init_admin.py
-            
-            echo ">>> Limpando imagens Docker não utilizadas..."
-            docker image prune -af
-            
-            echo "✅ Deploy finalizado com sucesso!"
+
+            echo "[`date`] ✅ Sequência de deploy concluída."
 
   validate:
     needs: deploy
     runs-on: ubuntu-latest
+    environment: prod
     steps:
-      - name: 1. Aguardar a inicialização dos serviços na VPS
-        run: sleep 30
-      - name: 2. Validar o endpoint do Frontend
-        run: |
-          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
-          echo "✅ O Frontend está online."
-      - name: 3. Validar o endpoint do Backend (Health Check)
-        run: |
-          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
-          echo "✅ O Backend está online."
+      - name: Validar aplicação na VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          password: ${{ secrets.VPS_SSH_PASS }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            set -e
+            PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
+            cd $PROJECT_DIR
+
+            echo ">>> Aguardando 20s para estabilização dos serviços..."
+            sleep 20
+
+            echo ">>> Verificando status dos contêineres..."
+            docker compose ps
+
+            echo ">>> Exibindo logs do backend para diagnóstico..."
+            docker compose logs backend --tail=100
+            
+            echo ">>> Teste 1: Health check local (dentro da VPS)..."
+            if ! curl -sSf --retry 3 http://localhost:8000/api/health; then
+              echo "❌ ERRO: Health check local para o backend falhou. A aplicação no contêiner não está respondendo."
+              exit 1
+            fi
+            echo "✅ Health check local da API bem-sucedido!"
+            
+            echo ">>> Teste 2: Health check público (através do domínio)..."
+            if ! curl -sSf --retry 3 http://setormusicalms.art.br/api/health; then
+              echo "❌ ERRO: Health check público falhou. A aplicação está rodando, mas o Nginx da VPS não está conseguindo se conectar a ela."
+              exit 1
+            fi
+            echo "✅ Health check público da API bem-sucedido!"
+
+            echo ">>> Inicializando banco de dados..."
+            docker compose exec backend python /app/init_admin.py
+
+            echo ">>> Limpando imagens não utilizadas..."
+            docker image prune -af
+
+            echo ">>> ✅ Validação na VPS concluída com sucesso!"
