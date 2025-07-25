@@ -1,5 +1,5 @@
 # fastapi_backend/schemas/recado.py
-# Versão 50 17/07/2025 23:45
+# Versão 01 25/07/2025 13:46
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
