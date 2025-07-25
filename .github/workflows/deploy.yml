@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 106 - Final Simplificada
+# Versão 108 - Final e Simplificada
 
 name: CI/CD - Construir e Implementar
 
@@ -13,13 +13,7 @@ env:
   IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
 
 jobs:
-  # O job de testes é importante, mas vamos focar em fazer o deploy funcionar.
-  # Você pode descomentá-lo depois, se desejar.
-  # test:
-  #   ...
-
   build_and_push:
-    # needs: test # Descomente se reativar o job de teste
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -64,44 +58,33 @@ jobs:
             set -e
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
 
-            echo ">>> Acessando o diretório do projeto: $PROJECT_DIR"
+            echo ">>> [1/6] Acessando o diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
             
-            echo ">>> Autenticando no GHCR..."
+            echo ">>> [2/6] Autenticando no GHCR..."
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
 
-            echo ">>> Parando serviços antigos..."
+            echo ">>> [3/6] Parando e removendo serviços antigos..."
             docker compose down --remove-orphans
             
-            echo ">>> Baixando as imagens mais recentes..."
+            echo ">>> [4/6] Baixando as imagens mais recentes..."
             docker compose pull
 
-            echo ">>> Subindo os novos contêineres..."
+            echo ">>> [5/6] Subindo os novos contêineres..."
             docker compose up -d
 
-            echo ">>> Aguardando 30s para a inicialização completa dos serviços..."
+            echo ">>> [6/6] Aguardando 30s para a inicialização completa..."
             sleep 30
 
-            echo ">>> Verificando status dos contêineres na VPS..."
-            docker compose ps
-
-            echo ">>> Exibindo logs do backend para diagnóstico..."
-            docker compose logs backend --tail=50
-            
-            echo ">>> Validando o Frontend em http://setormusicalms.art.br..."
-            if ! curl -sSf --retry 3 http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"; then
-              echo "❌ ERRO: O Frontend não está respondendo corretamente no domínio."
+            echo ">>> Verificando saúde da aplicação em produção..."
+            if curl -sSf --retry 3 http://setormusicalms.art.br/api/health | grep -q '"status":"healthy"'; then
+              echo "✅ Aplicação online e saudável!"
+              docker compose exec backend python /app/init_admin.py
+              docker image prune -af
+            else
+              echo "❌ ERRO: A API não respondeu no domínio."
+              echo "--- LOGS DO BACKEND ---"
+              docker compose logs backend --tail=100
               exit 1
             fi
-            echo "✅ Frontend está online."
-            
-            echo ">>> Validando a API em http://setormusicalms.art.br/api/health..."
-            if ! curl -sSf --retry 3 http://setormusicalms.art.br/api/health | grep -q '"status":"healthy"'; then
-              echo "❌ ERRO: A API não está respondendo corretamente no domínio."
-              docker compose logs backend
-              exit 1
-            fi
-            echo "✅ API está online."
-            
-            echo ">>> ✅ Deploy e Validação concluídos com sucesso!"
