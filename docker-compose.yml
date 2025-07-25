@@ -1,23 +1,28 @@
 # docker-compose.yml
-# Versão Final - 25/07/2025
+# Versão 64 25/07/2025 22:30
 services:
   backend:
-    image: ghcr.io/rnetmail/setormusicalms-backend:latest
+    build: ./fastapi_backend
     container_name: setormusicalms-backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
+      - ./fastapi_backend:/app
       - sqlite_data:/app/data
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     environment:
       - DATABASE_URL=sqlite:///data/setormusical.db
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/rnetmail/setormusicalms-frontend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: setormusicalms-frontend
     ports:
-      - "3000:3000"
+      # CORREÇÃO: Mapeia a porta 3000 do contêiner (onde o 'serve' roda)
+      # para a porta 8001 do host, conforme a configuração do Nginx da VPS.
+      - "8001:3000"
     depends_on:
       - backend
     restart: unless-stopped
