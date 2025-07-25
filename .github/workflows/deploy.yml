@@ -1,16 +1,17 @@
 # .github/workflows/deploy.yml
-# Versão  112 - MODO DIAGNÓSTICO
-
-name: CI/CD - Diagnosticar Ambiente de Produção
+# Versão 02 25/07/2025 17:39
+name: CI/CD - Build, Push and Deploy
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
-  IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
+  IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository }}/backend
+  IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository }}/frontend
 
 jobs:
   build_and_push:
@@ -21,62 +22,71 @@ jobs:
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
-      - name: Login no GHCR
+
+      - name: Login no GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build e Push das Imagens
-        run: |
-          docker build -t ${{ env.IMAGE_NAME_BACKEND }}:latest ./fastapi_backend && docker push ${{ env.IMAGE_NAME_BACKEND }}:latest
-          docker build -t ${{ env.IMAGE_NAME_FRONTEND }}:latest . && docker push ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
-  deploy_and_diagnose:
+      - name: Build e Push da imagem do Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./fastapi_backend
+          push: true
+          tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
+
+      - name: Build e Push da imagem do Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
+
+  deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    environment: prod
     steps:
-      - name: Conectar, Fazer Deploy e Coletar Diagnósticos
+      - name: Deploy na VPS
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_SSH_USER }}
           password: ${{ secrets.VPS_SSH_PASS }}
-          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          port: 22
+          port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
-            PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
-
-            echo ">>> [1/8] Acessando o diretório do projeto: $PROJECT_DIR"
+            PROJECT_DIR="/home/${{ secrets.VPS_SSH_USER }}/setormusicalms"
+            
+            echo ">> Acedendo ao diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
-            
-            echo ">>> [2/8] DADO-CHAVE: Exibindo o docker-compose.yml ATUAL da VPS..."
-            cat docker-compose.yml
-            
-            echo ">>> [3/8] Autenticando no GHCR..."
-            mkdir -p ~/.docker
-            echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
 
-            echo ">>> [4/8] Parando e removendo serviços antigos..."
+            echo ">> [PASSO CRÍTICO] Atualizando o código-fonte a partir do Git..."
+            git pull origin main
+            
+            echo ">> Autenticando no GitHub Container Registry..."
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+            echo ">> Parando e removendo contêineres antigos..."
             docker compose down --remove-orphans
             
-            echo ">>> [5/8] Baixando as imagens mais recentes..."
+            echo ">> Puxando as imagens mais recentes..."
             docker compose pull
 
-            echo ">>> [6/8] Subindo os novos contêineres..."
+            echo ">> (Re)Construindo as imagens localmente para garantir as últimas alterações..."
+            docker compose build --no-cache
+
+            echo ">> Subindo os novos contêineres..."
             docker compose up -d
 
-            echo ">>> [7/8] Aguardando 15s para a aplicação tentar iniciar..."
-            sleep 15
+            echo ">> Aguardando 10s para a inicialização..."
+            sleep 10
             
-            echo ">>> [8/8] DADOS DE DIAGNÓSTICO FINAL:"
-            echo "--- STATUS DOS CONTÊINERES ---"
+            echo ">> Verificando o estado dos contêineres..."
             docker compose ps
-            echo "--- LOGS DO BACKEND ---"
-            docker compose logs backend --tail=100 || echo "Não foi possível obter logs do backend."
-            echo "--- VARIÁVEIS DE AMBIENTE DO BACKEND (INSPECIONANDO O CONTÊINER) ---"
-            docker inspect $(docker compose ps -q backend) | grep -A 10 "Env"
+
+            echo ">> Exibindo logs recentes do backend..."
+            docker compose logs backend --tail=50
             
-            echo ">>> ✅ Diagnóstico concluído."
+            echo ">> ✅ Deploy finalizado."
