@@ -1,5 +1,5 @@
 # fastapi_backend/auth/security.py
-# Versão 08 17/07/2025 23:52
+# Versão 01 25/07/2025 11:15
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -8,27 +8,17 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-# Importações absolutas a partir da raiz do pacote 'fastapi_backend'
-from app.config import settings
-from app.database import get_db
-from crud import user as crud_user
-from models import user as model_user
-from schemas import user as schema_user
+from ..app.config import settings
+from ..app.database import get_db
+from ..crud import user as crud_user
+from ..models import user as model_user
+from ..schemas import user as schema_user
 
-# Define o endpoint de login para o fluxo OAuth2. O tokenUrl deve ser o caminho completo.
+# Define o endpoint de login para o fluxo OAuth2. O tokenUrl deve ser o caminho completo da API.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """
-    Cria um novo token de acesso JWT.
-
-    Args:
-        data: O dicionário de dados a ser codificado no token (geralmente o 'sub' com o username).
-        expires_delta: Duração opcional para a expiração do token.
-
-    Returns:
-        O token JWT codificado como uma string.
-    """
+    """Cria um novo token de acesso JWT."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -41,7 +31,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> model_user.User:
     """
-    Dependência do FastAPI que decodifica o token JWT, valida e retorna o
+    Dependência que decodifica o token JWT, valida e retorna o
     usuário correspondente do banco de dados.
     """
     credentials_exception = HTTPException(
@@ -79,7 +69,7 @@ def get_current_staff_user(current_user: model_user.User = Depends(get_current_a
     return current_user
 
 def get_current_superuser(current_user: model_user.User = Depends(get_current_active_user)) -> model_user.User:
-    """Dependência que garante que o usuário é um superusuário."""
+    """Dependência que garante que o usuário é um superusuário (admin)."""
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
