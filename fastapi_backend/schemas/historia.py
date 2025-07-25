@@ -1,6 +1,6 @@
 # fastapi_backend/schemas/historia.py
-# Versão 01 21/07/2025 10:50
-from pydantic import BaseModel, HttpUrl
+# Versão 01 25/07/2025 13:51
+from pydantic import BaseModel
 from typing import Optional
 
 class HistoriaItemBase(BaseModel):
@@ -8,7 +8,7 @@ class HistoriaItemBase(BaseModel):
     year: int
     title: str
     description: str
-    imageUrl: Optional[str] = None # Alterado para str para maior flexibilidade de URL
+    imageUrl: Optional[str] = None
 
 class HistoriaItemCreate(HistoriaItemBase):
     """Schema para a criação de um novo item da história."""
@@ -19,7 +19,7 @@ class HistoriaItemUpdate(BaseModel):
     year: Optional[int] = None
     title: Optional[str] = None
     description: Optional[str] = None
-    imageUrl: Optional[str] = None # Alterado para str
+    imageUrl: Optional[str] = None
 
 class HistoriaItem(HistoriaItemBase):
     """Schema para retornar os dados de um item da história da API."""
