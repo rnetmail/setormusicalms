@@ -12,6 +12,7 @@ Thumbs.db
 /venv
 /env
 .venv
+*.env
 
 # Logs e Arquivos de Cache
 logs/
