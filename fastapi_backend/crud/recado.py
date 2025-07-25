@@ -1,11 +1,10 @@
 # fastapi_backend/crud/recado.py
-# Versão 11 17/07/2025 23:56
+# Versão 01 25/07/2025 13:48
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-# Importações absolutas a partir da raiz do pacote 'fastapi_backend'
-from models.recado import RecadoItem
-from schemas.recado import RecadoItemCreate, RecadoItemUpdate
+from ..models.recado import RecadoItem
+from ..schemas.recado import RecadoItemCreate, RecadoItemUpdate
 
 def get_recado_item(db: Session, item_id: int) -> Optional[RecadoItem]:
     """Busca um recado específico pelo seu ID."""
@@ -19,7 +18,7 @@ def get_recado_items(
     active_only: bool = True
 ) -> List[RecadoItem]:
     """
-    Lista os recados, com filtros opcionais para grupo e status, e com paginação.
+    Lista os recados, com filtros opcionais para grupo e status.
     Os resultados são ordenados por data (mais recente primeiro).
     """
     query = db.query(RecadoItem)
