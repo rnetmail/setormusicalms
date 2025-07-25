@@ -1,7 +1,7 @@
 # fastapi_backend/models/galeria.py
-# Versão 01 21/07/2025 14:11
+# Versão 01 25/07/2025 13:55
 from sqlalchemy import Column, Integer, String, Date, Text
-from app.database import Base
+from ..app.database import Base
 
 class GaleriaItem(Base):
     """
@@ -11,8 +11,8 @@ class GaleriaItem(Base):
     __tablename__ = "galeria_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    group = Column(String(20), nullable=False) # Ex: 'Coral', 'Orquestra'
+    group = Column(String(50), nullable=False, index=True) # "Coral" ou "Orquestra"
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    imageUrl = Column(String(2048), nullable=False)
+    imageUrl = Column(Text, nullable=False)
     date = Column(Date, nullable=False)
