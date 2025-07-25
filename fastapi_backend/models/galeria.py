@@ -1,7 +1,7 @@
 # fastapi_backend/models/galeria.py
 # Versão 01 25/07/2025 13:55
 from sqlalchemy import Column, Integer, String, Date, Text
-from ..app.database import Base
+from app.database import Base
 
 class GaleriaItem(Base):
     """
