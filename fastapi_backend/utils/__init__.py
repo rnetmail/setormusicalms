@@ -1,5 +1,4 @@
 # fastapi_backend/utils/__init__.py
-# Versão 75 18/07/2025 09:05
-
-# Este ficheiro pode ficar vazio. A sua simples existência
-# indica ao Python que a pasta 'fastapi_backend/utils' é um pacote.
+# Versão 01 25/07/2025 11:35
+# Este arquivo vazio indica ao Python que o diretório 'utils'
+# deve ser tratado como um pacote.
