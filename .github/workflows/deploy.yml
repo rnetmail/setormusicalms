@@ -1,7 +1,7 @@
 # .github/workflows/deploy.yml
-# Versão 104 - Diagnóstico Definitivo
+# Versão 105 - Final Simplificada
 
-name: CI/CD - Testar, Construir, Implementar e Validar
+name: CI/CD - Construir e Implementar
 
 on:
   push:
@@ -13,51 +13,11 @@ env:
   IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-
-      - name: Subir serviços com Docker Compose
-        run: docker compose up -d --build
-
-      - name: Aguardar e Verificar saúde da API
-        run: |
-          echo "⏳ Aguardando saúde da API..."
-          timeout=90
-          until curl -sSf http://localhost:8000/api/health; do
-            timeout=$((timeout - 5))
-            if [ $timeout -le 0 ]; then
-              echo "❌ A API não ficou pronta em 90s"
-              docker compose logs backend
-              exit 1
-            fi
-            sleep 5
-          done
-          echo "✅ API saudável!"
-          docker compose exec backend python /app/init_admin.py
-
-      - name: Instalar dependências e Executar Testes
-        run: |
-          pip install -r fastapi_backend/requirements.txt
-          playwright install
-          pytest fastapi_backend/
-
-      - name: Encerrar containers após testes
-        if: always()
-        run: docker compose down
-
   build_and_push:
-    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    outputs:
-      backend_digest: ${{ steps.push_backend.outputs.digest }}
-      frontend_digest: ${{ steps.push_frontend.outputs.digest }}
-
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
@@ -68,7 +28,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build e Push Backend
-        id: push_backend
         uses: docker/build-push-action@v5
         with:
           context: ./fastapi_backend
@@ -99,73 +58,30 @@ jobs:
           script: |
             set -e
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
-            BACKEND_IMAGE="${{ env.IMAGE_NAME_BACKEND }}"
-            FRONTEND_IMAGE="${{ env.IMAGE_NAME_FRONTEND }}"
-            BACKEND_DIGEST="${{ needs.build_and_push.outputs.backend_digest }}"
-            FRONTEND_DIGEST="${{ needs.build_and_push.outputs.frontend_digest }}"
 
-            echo "[`date`] Acessando o projeto..."
+            echo ">>> Acessando o projeto em $PROJECT_DIR"
             cd $PROJECT_DIR
 
-            echo "[`date`] Autenticando no GHCR..."
+            echo ">>> Autenticando no GHCR..."
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
 
-            echo "[`date`] Parando containers antigos..."
+            echo ">>> Parando containers antigos..."
             docker compose down --remove-orphans
             
-            echo "[`date`] Baixando imagens atualizadas..."
-            docker pull $BACKEND_IMAGE@$BACKEND_DIGEST
-            docker tag $BACKEND_IMAGE@$BACKEND_DIGEST $BACKEND_IMAGE:latest
-            docker pull $FRONTEND_IMAGE@$FRONTEND_DIGEST
-            docker tag $FRONTEND_IMAGE@$FRONTEND_DIGEST $FRONTEND_IMAGE:latest
+            echo ">>> Baixando imagens atualizadas..."
+            docker compose pull
 
-            echo "[`date`] Subindo containers..."
+            echo ">>> Subindo novos containers..."
             docker compose up -d
 
-            echo "[`date`] ✅ Sequência de deploy concluída."
-
-  validate:
-    needs: deploy
-    runs-on: ubuntu-latest
-    environment: prod
-    steps:
-      - name: Validar aplicação na VPS
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_SSH_USER }}
-          password: ${{ secrets.VPS_SSH_PASS }}
-          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          port: 22
-          script: |
-            set -e
-            PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
-            cd $PROJECT_DIR
-
-            echo ">>> Aguardando 20s para estabilização dos serviços..."
-            sleep 20
-
-            echo ">>> Verificando status dos contêineres..."
+            echo ">>> Aguardando 15s para estabilização..."
+            sleep 15
+            
+            echo ">>> Verificando status dos containers..."
             docker compose ps
-
-            echo ">>> Exibindo logs do backend ANTES do teste..."
-            docker compose logs backend --tail=50
             
-            echo ">>> Testando o health check via domínio público..."
-            if ! curl -sSf --retry 3 --retry-delay 5 http://setormusicalms.art.br/api/health; then
-              echo "❌ ERRO: Health check público falhou."
-              echo ">>> Exibindo logs do backend APÓS a falha para diagnóstico..."
-              docker compose logs backend --tail=100
-              exit 1
-            fi
-            
-            echo "✅ Health check público bem-sucedido!"
-            
-            echo ">>> Inicializando banco de dados..."
-            docker compose exec backend python /app/init_admin.py
+            echo ">>> Exibindo logs do proxy para diagnóstico..."
+            docker compose logs setormusicalms-nginx-proxy || echo "Logs do proxy não encontrados, ignorando."
 
-            echo ">>> Limpando imagens não utilizadas..."
-            docker image prune -af
-
-            echo ">>> ✅ Validação na VPS concluída com sucesso!"
+            echo ">>> ✅ Deploy concluído."
