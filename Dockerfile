@@ -1,5 +1,5 @@
-# Dockerfile
-# Versão 37 22/07/2025 23:35
+# /Dockerfile
+# Versão 01 25/07/2025 17:21
 
 # --- Estágio 1: Build da Aplicação React ---
 FROM node:18-alpine AS build-stage
@@ -16,11 +16,8 @@ FROM nginx:stable-alpine
 # Copia os ficheiros estáticos gerados no estágio anterior
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# Remove a configuração padrão do Nginx
-RUN rm /etc/nginx/conf.d/default.conf
-
-# Copia o nosso ficheiro de configuração personalizado
-COPY nginx.conf /etc/nginx/conf.d
+# Copia o nosso ficheiro de configuração personalizado do Nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expõe a porta 80, que é a porta padrão do Nginx
 EXPOSE 80
