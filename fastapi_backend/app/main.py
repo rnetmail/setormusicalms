@@ -4,9 +4,9 @@ from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 
 # CORREÇÃO: As importações foram alteradas de relativas ("..") para absolutas.
-from app.database import engine, Base
-from app.config import settings
-from app.routers import auth, users, repertorio, agenda, recados, historia, galeria
+from .database import engine, Base
+from .config   import settings
+from .routers  import auth, users, repertorio, agenda, recados, historia, galeria
 
 # Cria todas as tabelas no banco de dados se não existirem.
 Base.metadata.create_all(bind=engine)
