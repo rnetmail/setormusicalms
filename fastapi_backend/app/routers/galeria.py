@@ -1,20 +1,19 @@
 # fastapi_backend/app/routers/galeria.py
-# Versão 02 21/07/2025 19:25
+# Versão 01 25/07/2025 14:25
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from auth.security import get_current_staff_user, get_current_active_user
-from crud import galeria as crud_galeria
-from models import user as model_user
-from schemas import galeria as schema_galeria
+from ..app.database import get_db
+from ..auth.security import get_current_staff_user
+from ..crud import galeria as crud_galeria
+from ..models import user as model_user
+from ..schemas import galeria as schema_galeria
 
 router = APIRouter(prefix="/galeria", tags=["Galeria"])
 
 @router.get("/{group}", response_model=List[schema_galeria.GaleriaItem])
 def read_galeria_items_by_group(
-    # CORREÇÃO: Alterado de Query para Path, pois "group" é um parâmetro de caminho na URL.
     group: str = Path(..., description="Filtrar por grupo: Coral ou Orquestra"),
     skip: int = 0,
     limit: int = 100,
@@ -32,7 +31,7 @@ def create_galeria_item(
     db: Session = Depends(get_db),
     current_user: model_user.User = Depends(get_current_staff_user)
 ):
-    """Cria um novo item na galeria. Apenas para administradores."""
+    """Cria um novo item na galeria. Apenas para staff."""
     return crud_galeria.create_galeria_item(db=db, item=item)
 
 @router.put("/{item_id}", response_model=schema_galeria.GaleriaItem)
@@ -42,7 +41,7 @@ def update_galeria_item(
     db: Session = Depends(get_db),
     current_user: model_user.User = Depends(get_current_staff_user)
 ):
-    """Atualiza um item da galeria. Apenas para administradores."""
+    """Atualiza um item da galeria. Apenas para staff."""
     db_item = crud_galeria.update_galeria_item(db, item_id=item_id, item_update=item_update)
     if db_item is None:
         raise HTTPException(status_code=404, detail="Item da galeria não encontrado para atualização.")
@@ -54,7 +53,7 @@ def delete_galeria_item(
     db: Session = Depends(get_db),
     current_user: model_user.User = Depends(get_current_staff_user)
 ):
-    """Apaga um item da galeria. Apenas para administradores."""
+    """Apaga um item da galeria. Apenas para staff."""
     db_item = crud_galeria.delete_galeria_item(db, item_id=item_id)
     if db_item is None:
         raise HTTPException(status_code=404, detail="Item da galeria não encontrado para exclusão.")
