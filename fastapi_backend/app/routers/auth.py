@@ -1,15 +1,14 @@
 # fastapi_backend/app/routers/auth.py
-# Versão 13 17/07/2025 23:58
+# Versão 01 25/07/2025 14:05
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-# Importações absolutas, utilizando a nova estrutura de pacotes
-from app.database import get_db
-from auth.security import create_access_token, get_current_active_user
-from crud import user as crud_user
-from models import user as model_user
-from schemas import user as schema_user
+from ..app.database import get_db
+from ..auth.security import create_access_token, get_current_active_user
+from ..crud import user as crud_user
+from ..models import user as model_user
+from ..schemas import user as schema_user
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -19,8 +18,7 @@ def login_for_access_token(
     db: Session = Depends(get_db)
 ):
     """
-    Endpoint para autenticar um usuário com username e password.
-    Se a autenticação for bem-sucedida, retorna um token de acesso JWT.
+    Autentica um usuário com username e password e retorna um token de acesso JWT.
     """
     user = crud_user.authenticate_user(
         db, username=form_data.username, password=form_data.password
@@ -42,7 +40,6 @@ def read_users_me(
     current_user: model_user.User = Depends(get_current_active_user)
 ):
     """
-    Endpoint protegido que retorna os dados do usuário atualmente autenticado,
-    com base no token JWT fornecido.
+    Endpoint protegido que retorna os dados do usuário autenticado.
     """
     return current_user
