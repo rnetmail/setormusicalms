@@ -1,5 +1,5 @@
 # fastapi_backend/schemas/user.py
-# Versão 13 16/07/2025 21:51
+# Versão 01 25/07/2025 11:01
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
@@ -15,7 +15,7 @@ class UserBase(BaseModel):
     is_superuser: bool = False
 
 class UserCreate(UserBase):
-    """Schema para a criação de um novo usuário. Exige o campo de senha."""
+    """Schema para a criação de um novo usuário, exigindo a senha."""
     password: str
 
 class UserUpdate(BaseModel):
@@ -30,14 +30,13 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
 
 class User(UserBase):
-    """Schema para retornar os dados de um usuário da API. Inclui o ID."""
+    """Schema para retornar os dados de um usuário da API (sem a senha)."""
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
 
     class Config:
-        # Permite que o Pydantic mapeie os dados diretamente de um
-        # modelo SQLAlchemy para este schema.
+        # Permite que o Pydantic mapeie os dados diretamente de um modelo SQLAlchemy.
         from_attributes = True
 
 class Token(BaseModel):
