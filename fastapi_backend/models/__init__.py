@@ -1,13 +1,11 @@
 # fastapi_backend/models/__init__.py
-# Versão 78 21/07/2025 18:16
+# Versão 01 25/07/2025 10:57
+# Este arquivo transforma o diretório 'models' em um pacote Python
+# e define a sua interface pública.
 
-# Este ficheiro importa todos os modelos para que possam ser
-# facilmente acedidos a partir do pacote 'models'.
 from .user import User
-from .repertorio import RepertorioItem
-from .agenda import AgendaItem
-from .recado import RecadoItem
-from .historia import HistoriaItem
-from .galeria import GaleriaItem
 
-__all__ = ["User", "RepertorioItem", "AgendaItem", "RecadoItem", "HistoriaItem", "GaleriaItem"]
+# A lista __all__ define quais nomes são exportados quando se utiliza "from models import *"
+__all__ = [
+    "User" 
+]
