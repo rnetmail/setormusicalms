@@ -1,5 +1,5 @@
 # fastapi_backend/auth/security.py
-# Versão 02 26/07/2025 11:30
+# Versão 03 26/07/2025 11:45
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -55,7 +55,7 @@ def get_current_user(
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
+        username: Optional[str] = payload.get("sub")
         if username is None:
             raise credentials_exception
         token_data = schema_token.TokenData(username=username)
