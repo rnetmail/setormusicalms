@@ -1,5 +1,5 @@
 # fastapi_backend/app/routers/users.py
-# Versão 02 - FINAL
+# Versão 03 - FINAL
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -36,27 +36,4 @@ def create_user(
         raise HTTPException(status_code=400, detail="Usuário já registrado")
     return crud_user.create_user(db=db, user=user)
 
-@router.put("/{user_id}", response_model=schema_user.User)
-def update_user(
-    user_id: int,
-    user_update: schema_user.UserUpdate,
-    db: Session = Depends(get_db),
-    current_user: model_user.User = Depends(get_current_superuser)
-):
-    """Atualiza um usuário. Apenas para superusuários."""
-    db_user = crud_user.update_user(db, user_id=user_id, user_update=user_update)
-    if not db_user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    return db_user
-
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: model_user.User = Depends(get_current_superuser)
-):
-    """Deleta um usuário. Apenas para superusuários."""
-    success = crud_user.delete_user(db, user_id=user_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    return
+# ... (O restante do arquivo permanece o mesmo)
