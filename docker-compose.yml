@@ -1,5 +1,5 @@
 # docker-compose.yml
-# Versão 65 - Padronizado para a porta 8001
+# Versão 113 - Final com Proxy Interno
 
 services:
   backend:
@@ -7,12 +7,12 @@ services:
     container_name: setormusicalms-backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
-      - ./fastapi_backend:/app
       - sqlite_data:/app/data
-    ports:
-      - "8000:8000"
     environment:
       - DATABASE_URL=sqlite:///data/setormusical.db
+    # Não expõe mais a porta para o host, a comunicação é interna.
+    expose:
+      - "8000"
     restart: unless-stopped
 
   frontend:
@@ -20,10 +20,24 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: setormusicalms-frontend
-    ports:
-      # CORREÇÃO FINAL: Mapeia a porta 8001 do host (VPS) para a nova porta 8001 do contêiner.
-      - "8001:8001"
+    # Não expõe mais a porta para o host.
+    expose:
+      - "3000"
     depends_on:
+      - backend
+    restart: unless-stopped
+
+  nginx-proxy:
+    image: nginx:stable-alpine
+    container_name: setormusicalms-nginx-proxy
+    ports:
+      # Expõe a porta 80 do proxy para a porta 8001 da VPS, que o Nginx externo espera.
+      - "8001:80"
+    volumes:
+      # Monta o nosso novo arquivo de configuração dentro do contêiner.
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
       - backend
     restart: unless-stopped
 
