@@ -1,5 +1,5 @@
 # fastapi_backend/auth/security.py
-# Versão 04 - FINAL E COMPLETA
+# Versão 05 - FINAL E COMPLETA
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -18,25 +18,28 @@ from crud import user as crud_user
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-def verify_password(plain_password, hashed_password):
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-def get_password_hash(password):
+def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 def authenticate_user(db: Session, username: str, password: str) -> Optional[model_user.User]:
-    """Verifica se um usuário existe e se a senha está correta."""
+    """
+    Verifica se um usuário existe e se a senha está correta.
+    Retorna o objeto do usuário em caso de sucesso, ou None caso contrário.
+    """
     user = crud_user.get_user_by_username(db, username=username)
     if not user or not verify_password(password, user.hashed_password):
         return None
     return user
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
@@ -79,7 +82,6 @@ def get_current_staff_user(
         )
     return current_user
 
-# FUNÇÃO ADICIONADA PARA CORRIGIR O ÚLTIMO ERRO
 def get_current_superuser(
     current_user: model_user.User = Depends(get_current_staff_user),
 ) -> model_user.User:
