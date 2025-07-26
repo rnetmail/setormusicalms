@@ -4,11 +4,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 
-from ..app.database import get_db
-from ..auth.security import get_current_staff_user
-from ..crud import galeria as crud_galeria
-from ..models import user as model_user
-from ..schemas import galeria as schema_galeria
+from app.database import get_db
+from auth.security import get_current_staff_user
+from crud import galeria as crud_galeria
+from models import user as model_user
+from schemas import galeria as schema_galeria
 
 router = APIRouter(prefix="/galeria", tags=["Galeria"])
 
