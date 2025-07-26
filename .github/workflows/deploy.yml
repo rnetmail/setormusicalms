@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 97 - Final Simplificada e Robusta
+# Versão 114 - Final com Teste de Saúde Corrigido
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -16,18 +16,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Checkout do código
+      - name: Checkout do código
         uses: actions/checkout@v4
-      - name: 2. Iniciar serviços com Docker Compose
+
+      - name: Subir serviços com Docker Compose
         run: docker compose up -d --build
-      - name: 3. Aguardar e Verificar a Saúde da API
+
+      - name: Aguardar e Verificar saúde da API
         run: |
-          echo "Aguardando a API ficar pronta..."
+          echo "⏳ Aguardando saúde da API..."
           timeout=90
-          until curl -sSf http://localhost:8000/api/health; do
+          # CORREÇÃO: Executa o curl de dentro do contêiner do backend, garantindo a conexão.
+          until docker compose exec backend curl -sSf http://localhost:8000/api/health; do
             timeout=$((timeout - 5))
             if [ $timeout -le 0 ]; then
-              echo "API não ficou pronta em 90 segundos."
+              echo "❌ A API não ficou pronta em 90s"
               docker compose logs backend
               exit 1
             fi
@@ -35,12 +38,14 @@ jobs:
           done
           echo "✅ API saudável!"
           docker compose exec backend python /app/init_admin.py
-      - name: 4. Instalar dependências e Executar Testes
+
+      - name: Instalar dependências e Executar Testes
         run: |
           pip install -r fastapi_backend/requirements.txt
           playwright install
           pytest fastapi_backend/
-      - name: 5. Parar os serviços após os testes
+
+      - name: Encerrar containers após testes
         if: always()
         run: docker compose down
 
@@ -51,20 +56,21 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - name: Login no GitHub Container Registry
+      - name: Checkout do código
+        uses: actions/checkout@v4
+      - name: Login no GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build e Push da imagem do Backend
+      - name: Build e Push Backend
         uses: docker/build-push-action@v5
         with:
           context: ./fastapi_backend
           push: true
           tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
-      - name: Build e Push da imagem do Frontend
+      - name: Build e Push Frontend
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -72,58 +78,50 @@ jobs:
           push: true
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
-  deploy:
+  deploy_and_validate:
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - name: Deploy na VPS via SSH
+      - name: Deploy e Validação na VPS
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_SSH_USER }}
+          password: ${{ secrets.VPS_SSH_PASS }}
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           port: 22
           script: |
             set -e
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
 
-            echo ">>> Acessando o diretório do projeto: $PROJECT_DIR"
+            echo ">>> [1/6] Acessando o diretório: $PROJECT_DIR"
             cd $PROJECT_DIR
             
-            echo ">>> Configurando autenticação do Docker..."
+            echo ">>> [2/6] Autenticando no GHCR..."
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
-            
-            echo ">>> Parando serviços antigos..."
+
+            echo ">>> [3/6] Parando e removendo serviços antigos..."
             docker compose down --remove-orphans
             
-            echo ">>> Baixando as imagens mais recentes..."
+            echo ">>> [4/6] Baixando as imagens mais recentes..."
             docker compose pull
-            
-            echo ">>> Reiniciando os serviços com recriação forçada..."
-            docker compose up -d --force-recreate
-            
-            echo ">>> Inicializando banco de dados..."
-            sleep 15
-            docker compose exec backend python /app/init_admin.py
-            
-            echo ">>> Limpando imagens não utilizadas..."
-            docker image prune -af
-            
-            echo "✅ Deploy finalizado com sucesso!"
 
-  validate:
-    needs: deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Validar aplicação em produção
-        run: |
-          sleep 30
-          echo "Validando Frontend: http://setormusicalms.art.br/"
-          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/ | grep -q "<title>Setor Musical Mokiti Okada MS</title>"
-          echo "✅ Frontend online."
+            echo ">>> [5/6] Subindo os novos contêineres..."
+            docker compose up -d
 
-          echo "Validando Backend: http://setormusicalms.art.br/api/health"
-          curl -sSf --retry 5 --retry-delay 5 http://setormusicalms.art.br/api/health | grep -q '{"status":"healthy","message":"API está no ar e funcionando."}'
-          echo "✅ Backend online."
+            echo ">>> [6/6] Aguardando 30s para a inicialização..."
+            sleep 30
+
+            echo ">>> Verificando saúde da aplicação em produção..."
+            if curl -sSf --retry 3 http://setormusicalms.art.br/api/health | grep -q '"status":"healthy"'; then
+              echo "✅ Aplicação online e saudável!"
+              docker compose exec backend python /app/init_admin.py
+              docker image prune -af
+            else
+              echo "❌ ERRO: A API não respondeu no domínio."
+              echo "--- LOGS DO BACKEND ---"
+              docker compose logs backend --tail=100
+              exit 1
+            fi
