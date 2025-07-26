@@ -1,17 +1,14 @@
 # fastapi_backend/app/routers/auth.py
-# Versão 02 26/07/2025 02:30
+# Versão 04 26/07/2025 11:35
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
-# CORREÇÃO: Import absoluto a partir da raiz do projeto 'app'
 from app.database import get_db
-from schemas import user as schema_user, token as schema_token
-from crud import user as crud_user
-from auth.security import create_access_token, get_current_active_user, authenticate_user
+from schemas import token as schema_token
+from auth.security import create_access_token, authenticate_user
 from app.config import settings
-from models import user as model_user
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
