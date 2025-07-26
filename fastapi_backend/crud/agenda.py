@@ -3,8 +3,8 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from ..models.agenda import AgendaItem
-from ..schemas.agenda import AgendaItemCreate, AgendaItemUpdate
+from models.agenda import AgendaItem
+from schemas.agenda import AgendaItemCreate, AgendaItemUpdate
 
 def get_agenda_item(db: Session, item_id: int) -> Optional[AgendaItem]:
     """Busca um item da agenda específico pelo seu ID."""
