@@ -4,11 +4,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from ..app.database import get_db
-from ..auth.security import get_current_staff_user
-from ..crud import recado as crud_recado
-from ..models import user as model_user
-from ..schemas import recado as schema_recado
+from app.database import get_db
+from auth.security import get_current_staff_user
+from crud import recado as crud_recado
+from models import user as model_user
+from schemas import recado as schema_recado
 
 router = APIRouter(prefix="/recados", tags=["Recados"])
 
