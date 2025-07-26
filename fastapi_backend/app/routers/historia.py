@@ -4,11 +4,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..app.database import get_db
-from ..auth.security import get_current_staff_user
-from ..crud import historia as crud_historia
-from ..models import user as model_user
-from ..schemas import historia as schema_historia
+from app.database import get_db
+from auth.security import get_current_staff_user
+from crud import historia as crud_historia
+from models import user as model_user
+from schemas import historia as schema_historia
 
 router = APIRouter(prefix="/historia", tags=["História"])
 
