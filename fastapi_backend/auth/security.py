@@ -8,11 +8,11 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from ..app.config import settings
-from ..app.database import get_db
-from ..crud import user as crud_user
-from ..models import user as model_user
-from ..schemas import user as schema_user
+from app.config import settings
+from app.database import get_db
+from crud import user as crud_user
+from models import user as model_user
+from schemas import user as schema_user
 
 # Define o endpoint de login para o fluxo OAuth2. O tokenUrl deve ser o caminho completo da API.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
