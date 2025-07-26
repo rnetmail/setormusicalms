@@ -5,7 +5,7 @@ from playwright.async_api import async_playwright, Page
 from datetime import datetime
 
 # O endereço base para os testes de frontend deve apontar para a porta do frontend.
-BASE_URL = "http://localhost:3000"
+BASE_URL = "http://localhost:8001"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "Setor@MS25"
 
