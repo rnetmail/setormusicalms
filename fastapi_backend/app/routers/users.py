@@ -4,11 +4,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..app.database import get_db
-from ..auth.security import get_current_superuser
-from ..crud import user as crud_user
-from ..models import user as model_user
-from ..schemas import user as schema_user
+from app.database import get_db
+from auth.security import get_current_superuser
+from crud import user as crud_user
+from models import user as model_user
+from schemas import user as schema_user
 
 # Apenas superusuários podem acessar os endpoints deste router.
 router = APIRouter(
