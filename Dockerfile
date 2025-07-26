@@ -1,5 +1,5 @@
 # Dockerfile
-# Versão 35 - Padronizado para a porta 8001
+# Versão 36 - Padronizado para a porta 8001
 
 # --- Estágio 1: Build da Aplicação React ---
 FROM node:18-alpine AS build-stage
