@@ -4,11 +4,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from ..app.database import get_db
-from ..auth.security import get_current_staff_user
-from ..crud import agenda as crud_agenda
-from ..models import user as model_user
-from ..schemas import agenda as schema_agenda
+from app.database import get_db
+from auth.security import get_current_staff_user
+from crud import agenda as crud_agenda
+from models import user as model_user
+from schemas import agenda as schema_agenda
 
 router = APIRouter(prefix="/agenda", tags=["Agenda"])
 
