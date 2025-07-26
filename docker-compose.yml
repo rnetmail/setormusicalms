@@ -1,11 +1,13 @@
-# /docker-compose.yml
-# Versão 01 25/07/2025 17:20
+# docker-compose.yml
+# Versão 65 - Padronizado para a porta 8001
+
 services:
   backend:
     build: ./fastapi_backend
     container_name: setormusicalms-backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
+      - ./fastapi_backend:/app
       - sqlite_data:/app/data
     ports:
       - "8000:8000"
@@ -14,15 +16,16 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: setormusicalms-frontend
     ports:
-      # A porta interna 80 do Nginx será mapeada para a 8001 da VPS
-      - "8001:80"
+      # CORREÇÃO FINAL: Mapeia a porta 8001 do host (VPS) para a nova porta 8001 do contêiner.
+      - "8001:8001"
     depends_on:
       - backend
     restart: unless-stopped
 
 volumes:
   sqlite_data:
-    driver: local
