@@ -3,8 +3,8 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from ..models.galeria import GaleriaItem
-from ..schemas.galeria import GaleriaItemCreate, GaleriaItemUpdate
+from models.galeria import GaleriaItem
+from schemas.galeria import GaleriaItemCreate, GaleriaItemUpdate
 
 def get_galeria_item(db: Session, item_id: int) -> Optional[GaleriaItem]:
     """Busca um item da galeria específico pelo seu ID."""
