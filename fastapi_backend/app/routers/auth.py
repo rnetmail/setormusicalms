@@ -1,5 +1,5 @@
 # fastapi_backend/app/routers/auth.py
-# Versão 04 26/07/2025 11:35
+# Versão 05 26/07/2025 11:50
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
