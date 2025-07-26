@@ -3,9 +3,9 @@
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from ..models.user import User
-from ..schemas.user import UserCreate, UserUpdate
-from ..auth.password import get_password_hash, verify_password
+from models.user import User
+from schemas.user import UserCreate, UserUpdate
+from auth.password import get_password_hash, verify_password
 
 def get_user(db: Session, user_id: int) -> Optional[User]:
     """Busca um usuário específico pelo ID."""
