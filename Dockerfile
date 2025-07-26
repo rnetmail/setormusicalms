@@ -1,5 +1,5 @@
-# /Dockerfile
-# Versão 01 25/07/2025 17:21
+# Dockerfile
+# Versão 35 - Padronizado para a porta 8001
 
 # --- Estágio 1: Build da Aplicação React ---
 FROM node:18-alpine AS build-stage
@@ -10,17 +10,19 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# --- Estágio 2: Servidor de Produção Nginx ---
-FROM nginx:stable-alpine
+# --- Estágio 2: Servidor de Produção ---
+FROM node:18-alpine
 
-# Copia os ficheiros estáticos gerados no estágio anterior
-COPY --from=build-stage /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-# Copia o nosso ficheiro de configuração personalizado do Nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Instala o 'serve' como dependência global
+RUN npm install -g serve
 
-# Expõe a porta 80, que é a porta padrão do Nginx
-EXPOSE 80
+# Copia os arquivos estáticos do build
+COPY --from=build-stage /app/dist .
 
-# Comando para iniciar o Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Expõe a porta 8001, que o Nginx da VPS espera
+EXPOSE 8001
+
+# Executa o servidor serve na porta 8001
+CMD ["serve", "-s", ".", "-l", "8001"]
