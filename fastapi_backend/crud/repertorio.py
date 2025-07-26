@@ -3,9 +3,9 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from ..models.repertorio import RepertorioItem
-from ..schemas.repertorio import RepertorioItemCreate, RepertorioItemUpdate
-from ..utils.media_converter import process_media_urls
+from models.repertorio import RepertorioItem
+from schemas.repertorio import RepertorioItemCreate, RepertorioItemUpdate
+from utils.media_converter import process_media_urls
 
 def get_repertorio_item(db: Session, item_id: int) -> Optional[RepertorioItem]:
     """Busca um item de repertório específico pelo ID."""
