@@ -3,8 +3,8 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from ..models.recado import RecadoItem
-from ..schemas.recado import RecadoItemCreate, RecadoItemUpdate
+from models.recado import RecadoItem
+from schemas.recado import RecadoItemCreate, RecadoItemUpdate
 
 def get_recado_item(db: Session, item_id: int) -> Optional[RecadoItem]:
     """Busca um recado específico pelo seu ID."""
