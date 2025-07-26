@@ -1,17 +1,16 @@
 # .github/workflows/deploy.yml
-# Versão 04 25/07/2025 18:00
-name: CI/CD - Build, Push and Deploy
+# Versão 112 - Final de Produção
+
+name: CI/CD - Construir, Implementar e Validar
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [main]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository }}/backend
-  IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository }}/frontend
+  IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
+  IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
 
 jobs:
   build_and_push:
@@ -22,74 +21,57 @@ jobs:
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
-
-      - name: Login no GitHub Container Registry
+      - name: Login no GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build e Push das Imagens
+        run: |
+          docker build -t ${{ env.IMAGE_NAME_BACKEND }}:latest ./fastapi_backend && docker push ${{ env.IMAGE_NAME_BACKEND }}:latest
+          docker build -t ${{ env.IMAGE_NAME_FRONTEND }}:latest . && docker push ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
-      - name: Build e Push da imagem do Backend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./fastapi_backend
-          push: true
-          tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
-
-      - name: Build e Push da imagem do Frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
-
-  deploy:
+  deploy_and_validate:
     needs: build_and_push
     runs-on: ubuntu-latest
-    environment: prod 
+    environment: prod
     steps:
-      - name: Deploy na VPS
+      - name: Deploy e Validação na VPS
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_SSH_USER }}
           password: ${{ secrets.VPS_SSH_PASS }}
-          port: ${{ secrets.VPS_SSH_PORT }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          port: 22
           script: |
             set -e
-            # CORREÇÃO: Utiliza o caminho correto do projeto na VPS, conforme a documentação.
-            PROJECT_DIR="/setormusical/setormusicalms"
-            
-            echo ">> Acedendo ao diretório do projeto: $PROJECT_DIR"
+            PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
+
+            echo ">>> [1/5] Acessando o diretório: $PROJECT_DIR"
             cd $PROJECT_DIR
-
-            echo ">> Atualizando o código-fonte a partir do Git..."
-            git pull origin main
             
-            echo ">> Autenticando no GitHub Container Registry..."
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-
-            echo ">> Parando e removendo contêineres antigos..."
-            docker compose down --remove-orphans
-            
-            echo ">> Puxando as imagens mais recentes..."
+            echo ">>> [2/5] Autenticando e baixando imagens..."
+            mkdir -p ~/.docker
+            echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
             docker compose pull
-
-            echo ">> (Re)Construindo as imagens localmente para garantir as últimas alterações..."
-            docker compose build --no-cache
-
-            echo ">> Subindo os novos contêineres..."
+            
+            echo ">>> [3/5] Reiniciando os serviços..."
+            docker compose down --remove-orphans
             docker compose up -d
 
-            echo ">> Inicializando o banco de dados e o admin (se necessário)..."
-            docker compose exec backend python init_admin.py
-            
-            echo ">> Verificando o estado dos contêineres após 10s..."
-            sleep 10
-            docker compose ps
+            echo ">>> [4/5] Aguardando 30s para a inicialização..."
+            sleep 30
 
-            echo ">> Exibindo logs recentes do backend..."
-            docker compose logs backend --tail=50
-            
-            echo ">> ✅ Deploy finalizado."
+            echo ">>> [5/5] Verificando saúde da aplicação em produção..."
+            if curl -sSf --retry 3 http://setormusicalms.art.br/api/health | grep -q '"status":"healthy"'; then
+              echo "✅ Aplicação online e saudável!"
+              docker compose exec backend python /app/init_admin.py
+              docker image prune -af
+            else
+              echo "❌ ERRO: A API não respondeu no domínio."
+              echo "--- LOGS DO BACKEND ---"
+              docker compose logs backend --tail=100
+              exit 1
+            fi
