@@ -38,12 +38,3 @@ class User(UserBase):
     class Config:
         # Permite que o Pydantic mapeie os dados diretamente de um modelo SQLAlchemy.
         from_attributes = True
-
-class Token(BaseModel):
-    """Schema para a resposta do token de acesso no login."""
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    """Schema para os dados contidos dentro de um token JWT."""
-    username: Optional[str] = None
