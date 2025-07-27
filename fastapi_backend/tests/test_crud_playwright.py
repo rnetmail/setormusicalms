@@ -1,15 +1,15 @@
 # fastapi_backend/tests/test_crud_playwright.py
-# Versão 05 - FINAL E CORRIGIDA para Conflito de Loop
+# Versão 06 - FINAL sem Conflito de Loop
 
 import pytest
 from playwright.async_api import Page, expect
 from .config import ADMIN_USERNAME, ADMIN_PASSWORD
 
-# A URL do frontend DENTRO da rede Docker é o nome do serviço na porta interna
+# A URL do frontend DENTRO da rede Docker é o nome do serviço na porta interna correta
 FRONTEND_URL = "http://frontend:3000"
 
-# CORREÇÃO: Removemos o decorador @pytest.mark.asyncio.
-# O pytest-playwright já gerencia o loop de eventos para testes de UI.
+# NOTA: O decorador @pytest.mark.asyncio foi removido.
+# O pytest-playwright gerencia o loop de eventos para seus próprios testes.
 async def test_admin_login_flow(page: Page):
     """Testa o fluxo de login no painel de administração."""
     await page.goto(f"{FRONTEND_URL}/gestao/login")
