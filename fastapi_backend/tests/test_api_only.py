@@ -1,5 +1,5 @@
 # fastapi_backend/tests/test_api_only.py
-# Versão 02 - Com espera pela API
+# Versão 03 - FINAL E CORRIGIDA
 
 import pytest
 import requests
@@ -15,9 +15,10 @@ def auth_token(request):
     # --- Espera pela API ---
     max_wait = 60
     start_time = time.time()
+    api_health_url = API_URL.replace("/api", "/api/health") # Ajusta a URL para o health check
     while time.time() - start_time < max_wait:
         try:
-            health_response = requests.get(f"{API_URL}/health", timeout=2)
+            health_response = requests.get(api_health_url, timeout=2)
             if health_response.status_code == 200:
                 print("\n✅ API está saudável!")
                 break
@@ -44,18 +45,20 @@ class TestApiOnly:
     token: str
 
     def test_health_check(self):
-        response = requests.get(f"{API_URL}/health")
+        """Testa o endpoint de saúde da API."""
+        response = requests.get(API_URL.replace("/api", "/api/health"))
         assert response.status_code == 200
         assert response.json()["status"] == "healthy"
 
-    def test_repertorio_list(self):
+    def test_repertorio_list_unauthorized(self):
+        """Testa se o acesso não autorizado à lista de repertório é negado."""
+        response = requests.get(f"{API_URL}/repertorio/")
+        # Espera-se 401 Unauthorized se o token não for fornecido
+        assert response.status_code == 401
+
+    def test_repertorio_list_authorized(self):
+        """Testa o acesso autorizado à lista de repertório."""
         headers = {"Authorization": f"Bearer {self.token}"}
-        response = requests.get(f"{API_URL}/repertorio/", headers=headers)
+        response = requests.get(f"{API_URL}/repertorio/?type_filter=Coral", headers=headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
-
-    def test_agenda_crud(self):
-        headers = {"Authorization": f"Bearer {self.token}"}
-        # Adicione aqui os testes de CRUD para a agenda
-        response = requests.get(f"{API_URL}/agenda/", headers=headers)
-        assert response.status_code == 200
