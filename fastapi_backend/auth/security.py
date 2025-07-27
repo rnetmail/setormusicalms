@@ -1,5 +1,5 @@
 # fastapi_backend/auth/security.py
-# Versão 07 - FINAL, COMPLETA E REATORADA
+# Versão 09 - FINAL, COMPLETA E REFATORADA
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-# CORREÇÃO DEFINITIVA: Importa as funções de hashing do novo módulo 'hashing',
+# CORREÇÃO DEFINITIVA: Importa a função de verificação do novo módulo 'hashing',
 # quebrando a dependência circular.
 from auth.hashing import verify_password
 from app.config import settings
