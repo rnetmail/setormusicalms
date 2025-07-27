@@ -1,11 +1,10 @@
 # fastapi_backend/init_admin.py
-# Versão 02 - Criação de Admin Robusta
+# Versão 03 - Criação de Admin Robusta
 
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
 from crud import user as crud_user
 from schemas import user as schema_user
-from models import user as model_user
 
 def init_db():
     # Cria as tabelas
