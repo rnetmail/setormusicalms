@@ -1,65 +1,43 @@
 # fastapi_backend/tests/test_crud_playwright.py
-# Versão 32 18/07/2025 00:38
+# Versão 02 - Corrigido para Async
+
 import pytest
-from playwright.async_api import async_playwright, Page
-from datetime import datetime
+from playwright.async_api import async_playwright, Page, expect
+from .config import API_URL, ADMIN_USERNAME, ADMIN_PASSWORD
 
-# O endereço base para os testes de frontend deve apontar para a porta do frontend.
-BASE_URL = "http://localhost:8001"
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "Setor@MS25"
+# URL do frontend para os testes de Playwright
+FRONTEND_URL = "http://localhost:3000"
 
-class TestCrudPlaywright:
-    @pytest.fixture(scope="class", autouse=True)
-    async def browser_context_setup(self, playwright: async_playwright):
-        """Inicia uma instância do browser para todos os testes da classe."""
-        self.browser = await playwright.chromium.launch(headless=True, slow_mo=50)
-        yield
-        await self.browser.close()
+@pytest.mark.asyncio
+async def test_admin_login_flow(page: Page):
+    """Testa o fluxo de login no painel de administração."""
+    await page.goto(f"{FRONTEND_URL}/gestao/login")
+    await page.fill('input[name="username"]', ADMIN_USERNAME)
+    await page.fill('input[name="password"]', ADMIN_PASSWORD)
+    await page.click('button[type="submit"]')
+    # Espera que o dashboard seja carregado, verificando por um elemento específico
+    await expect(page.locator('h1:has-text("Painel de Gestão")')).to_be_visible()
 
-    async def admin_login(self, page: Page):
-        """Função auxiliar para realizar o login no painel de gestão."""
-        await page.goto(f"{BASE_URL}/#/gestao/login", timeout=30000)
-        await page.fill('input[name="username"]', ADMIN_USERNAME)
-        await page.fill('input[name="password"]', ADMIN_PASSWORD)
-        await page.click('button[type="submit"]')
-        await page.wait_for_url(f"{BASE_URL}/#/gestao", timeout=10000)
-        assert await page.locator("h1:has-text('Painel de Gestão')").is_visible()
+@pytest.mark.asyncio
+async def test_create_and_delete_repertorio_item(page: Page):
+    """Testa a criação e exclusão de um item de repertório."""
+    # Login
+    await page.goto(f"{FRONTEND_URL}/gestao/login")
+    await page.fill('input[name="username"]', ADMIN_USERNAME)
+    await page.fill('input[name="password"]', ADMIN_PASSWORD)
+    await page.click('button[type="submit"]')
+    await expect(page.locator('h1:has-text("Painel de Gestão")')).to_be_visible()
 
-    async def test_admin_login_flow(self):
-        """Testa o fluxo de login no painel de gestão."""
-        page = await self.browser.new_page()
-        try:
-            await self.admin_login(page)
-        finally:
-            await page.close()
-
-    async def test_create_and_delete_repertorio_item(self):
-        """Testa a criação e remoção de um item de repertório através da UI."""
-        page = await self.browser.new_page()
-        # CORREÇÃO: Restaurado o bloco 'finally' para garantir que a página seja fechada.
-        try:
-            await self.admin_login(page)
-            
-            await page.click("button:has-text('Coral')")
-            await page.click("button:has-text('Adicionar Novo')")
-
-            item_title = f"Teste Playwright {datetime.now().strftime('%H%M%S')}"
-            await page.wait_for_selector('input[name="title"]')
-            await page.fill('input[name="title"]', item_title)
-            await page.fill('input[name="year"]', "2025")
-            await page.fill('input[name="sheet_music_url"]', "http://exemplo.com/partitura.pdf")
-            
-            await page.click("button:has-text('Salvar')")
-            await page.wait_for_selector(f"text={item_title}", timeout=5000)
-
-            item_row = page.locator("tr", has_text=item_title)
-            # Aceita o diálogo de confirmação do browser
-            page.on("dialog", lambda dialog: dialog.accept())
-            
-            await item_row.locator('button[aria-label="delete-item"]').click()
-            
-            await page.wait_for_timeout(2000)
-            assert not await page.locator(f"text={item_title}").is_visible()
-        finally:
-            await page.close()
+    # Criação
+    await page.click('button:has-text("Adicionar Item")')
+    await page.fill('input[name="title"]', "Música de Teste Playwright")
+    await page.fill('input[name="arranger"]', "Arranjador Teste")
+    await page.click('button[type="submit"]')
+    
+    # Verificação e Exclusão
+    item_row = page.locator('tr:has-text("Música de Teste Playwright")')
+    await expect(item_row).to_be_visible()
+    await item_row.locator('button[aria-label="delete"]').click()
+    
+    # Confirma que o item foi removido
+    await expect(item_row).not_to_be_visible()
