@@ -1,5 +1,5 @@
 # fastapi_backend/tests/test_crud_playwright.py
-# Versão 12 - FINAL sem Conflito de Loop
+# Versão 13 - FINAL sem Conflito de Loop
 
 import pytest
 from playwright.async_api import Page, expect
