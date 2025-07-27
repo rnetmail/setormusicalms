@@ -1,12 +1,11 @@
 # fastapi_backend/tests/test_crud_playwright.py
-# Versão 08 - FINAL sem Conflito de Loop
+# Versão 09 - FINAL sem Conflito de Loop
 
 import pytest
 from playwright.async_api import Page, expect
 from .config import ADMIN_USERNAME, ADMIN_PASSWORD
 
 # A URL do frontend DENTRO da rede Docker é o nome do serviço na porta interna
-# que o servidor 'serve' está usando, conforme o Dockerfile do frontend.
 FRONTEND_URL = "http://frontend:3000"
 
 # NOTA: O decorador @pytest.mark.asyncio foi removido.
