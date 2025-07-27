@@ -1,5 +1,5 @@
 # fastapi_backend/init_admin.py
-# Versão 03 - Criação de Admin Robusta
+# Versão 04 - FINAL
 
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
@@ -7,16 +7,15 @@ from crud import user as crud_user
 from schemas import user as schema_user
 
 def init_db():
-    # Cria as tabelas
+    # Cria as tabelas no banco de dados
     Base.metadata.create_all(bind=engine)
 
     db: Session = SessionLocal()
     try:
-        # Verifica se o usuário admin já existe
+        # Verifica se o usuário 'admin' já existe
         admin_user = crud_user.get_user_by_username(db, username="admin")
         if not admin_user:
             print("Criando usuário administrador padrão...")
-            # CORREÇÃO: Garante que o usuário seja criado com todos os status corretos
             user_in = schema_user.UserCreate(
                 username="admin",
                 password="Setor@MS25",
@@ -26,6 +25,7 @@ def init_db():
                 is_staff=True,
                 is_superuser=True
             )
+            # Agora a função create_user existe e será chamada corretamente
             crud_user.create_user(db=db, user=user_in)
             print("Usuário administrador criado com sucesso.")
         else:
