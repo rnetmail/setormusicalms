@@ -18,6 +18,7 @@ class User(Base):
     
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
+    full_name = Column(String(100), nullable=True)
     
     # Papéis e permissões
     is_active = Column(Boolean, default=True)
