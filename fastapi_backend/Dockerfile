@@ -1,22 +1,27 @@
 # fastapi_backend/Dockerfile
-# Versão 119 - FINAL com Ordem de Instalação Corrigida
+# Versão 120 - Ordem de Instalação Corrigida
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# 1. Instala as dependências do sistema para Playwright
-RUN apt-get update && playwright install-deps && rm -rf /var/lib/apt/lists/*
-
-# 2. Copia e instala as dependências Python (incluindo o próprio playwright)
+# 1. Copia o arquivo de dependências primeiro
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
 
-# 3. Agora que o playwright está instalado via pip, instala os navegadores
+# 2. Instala as dependências do sistema e do Python (incluindo o próprio playwright)
+RUN apt-get update && \
+    apt-get install -y curl && \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    rm -rf /var/lib/apt/lists/*
+
+# 3. Agora que o 'playwright' está instalado via pip, instala as dependências de navegador
+RUN playwright install-deps
+
+# 4. Instala os binários dos navegadores do Playwright
 RUN playwright install
 
-# Copia o código da aplicação
+# Copia o restante do código da aplicação
 COPY . .
 
 # Cria o diretório de dados para o SQLite
