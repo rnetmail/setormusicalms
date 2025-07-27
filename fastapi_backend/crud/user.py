@@ -1,13 +1,11 @@
 # fastapi_backend/crud/user.py
-# Versão 04 - FINAL E COMPLETA
+# Versão 05 - FINAL E COMPLETA
 
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from models import user as model_user
 from schemas import user as schema_user
-# CORREÇÃO DEFINITIVA: Importa a função de hashing do novo módulo 'auth.hashing',
-# quebrando a dependência circular com 'auth.security'.
 from auth.hashing import get_password_hash
 
 def get_user(db: Session, user_id: int) -> Optional[model_user.User]:
@@ -44,7 +42,6 @@ def update_user(db: Session, user_id: int, user_update: schema_user.UserUpdate) 
     db_user = get_user(db, user_id)
     if db_user:
         update_data = user_update.model_dump(exclude_unset=True)
-        # Se uma nova senha for fornecida, gera o hash dela.
         if "password" in update_data and update_data["password"]:
             update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
         
