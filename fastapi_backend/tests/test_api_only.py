@@ -1,5 +1,5 @@
 # fastapi_backend/tests/test_api_only.py
-# Versão 03 - FINAL E CORRIGIDA
+# Versão 04 - Com Espera de API
 
 import pytest
 import requests
@@ -15,7 +15,7 @@ def auth_token(request):
     # --- Espera pela API ---
     max_wait = 60
     start_time = time.time()
-    api_health_url = API_URL.replace("/api", "/api/health") # Ajusta a URL para o health check
+    api_health_url = API_URL.replace("/api", "/api/health")
     while time.time() - start_time < max_wait:
         try:
             health_response = requests.get(api_health_url, timeout=2)
@@ -53,7 +53,6 @@ class TestApiOnly:
     def test_repertorio_list_unauthorized(self):
         """Testa se o acesso não autorizado à lista de repertório é negado."""
         response = requests.get(f"{API_URL}/repertorio/")
-        # Espera-se 401 Unauthorized se o token não for fornecido
         assert response.status_code == 401
 
     def test_repertorio_list_authorized(self):
