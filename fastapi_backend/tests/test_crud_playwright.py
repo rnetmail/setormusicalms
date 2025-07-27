@@ -1,12 +1,12 @@
 # fastapi_backend/tests/test_crud_playwright.py
-# Versão 02 - Corrigido para Async
+# Versão 03 - Corrigido para Async
 
 import pytest
-from playwright.async_api import async_playwright, Page, expect
-from .config import API_URL, ADMIN_USERNAME, ADMIN_PASSWORD
+from playwright.async_api import Page, expect
+from .config import ADMIN_USERNAME, ADMIN_PASSWORD
 
-# URL do frontend para os testes de Playwright
-FRONTEND_URL = "http://localhost:3000"
+# A URL do frontend DENTRO da rede Docker é o nome do serviço na porta interna
+FRONTEND_URL = "http://frontend:3000"
 
 @pytest.mark.asyncio
 async def test_admin_login_flow(page: Page):
@@ -15,7 +15,6 @@ async def test_admin_login_flow(page: Page):
     await page.fill('input[name="username"]', ADMIN_USERNAME)
     await page.fill('input[name="password"]', ADMIN_PASSWORD)
     await page.click('button[type="submit"]')
-    # Espera que o dashboard seja carregado, verificando por um elemento específico
     await expect(page.locator('h1:has-text("Painel de Gestão")')).to_be_visible()
 
 @pytest.mark.asyncio
