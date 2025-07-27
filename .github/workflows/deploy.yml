@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml
-# Versão 115 - Testes Executados no Contêiner
+# Versão 116 - Testes no Contêiner
 
 name: CI/CD - Testar, Construir, Implementar e Validar
 
@@ -24,7 +24,7 @@ jobs:
 
       - name: 3. Executar testes dentro do contêiner
         run: |
-          # Espera a API ficar saudável antes de rodar os testes
+          # Aguarda a API ficar saudável antes de rodar os testes
           echo "⏳ Aguardando saúde da API..."
           timeout=90
           until docker compose exec -T backend curl -sSf http://localhost:8000/api/health; do
@@ -37,7 +37,10 @@ jobs:
             sleep 5
           done
           echo "✅ API saudável!"
-
+          
+          # Inicializa o admin antes dos testes
+          docker compose exec -T backend python /app/init_admin.py
+          
           # Roda o pytest DENTRO do contêiner
           echo "🚀 Executando testes com pytest..."
           docker compose exec -T backend pytest
