@@ -1,21 +1,19 @@
 # fastapi_backend/Dockerfile
-# Versão 118 - FINAL com Dependências do Playwright
+# Versão 119 - FINAL com Ordem de Instalação Corrigida
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# ATUALIZAÇÃO: Instala curl e as dependências de sistema para o Playwright
-RUN apt-get update && apt-get install -y curl \
-    && playwright install-deps \
-    && rm -rf /var/lib/apt/lists/*
+# 1. Instala as dependências do sistema para Playwright
+RUN apt-get update && playwright install-deps && rm -rf /var/lib/apt/lists/*
 
-# Copia e instala as dependências Python
+# 2. Copia e instala as dependências Python (incluindo o próprio playwright)
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Instala os navegadores do Playwright
+# 3. Agora que o playwright está instalado via pip, instala os navegadores
 RUN playwright install
 
 # Copia o código da aplicação
