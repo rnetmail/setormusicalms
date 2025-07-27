@@ -1,5 +1,5 @@
 # fastapi_backend/app/routers/repertorio.py
-# Versão 19 - Endpoint Protegido
+# Versão 20 - Endpoint Protegido
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -26,7 +26,8 @@ def read_repertorio_items(
     items = crud_repertorio.get_repertorio_items(db, skip=skip, limit=limit, type_filter=type_filter)
     return items
 
-# ... (o restante do arquivo permanece o mesmo, adicione a dependência aos outros endpoints GET se necessário)
+# O restante do arquivo (POST, PUT, DELETE, etc.) permanece o mesmo.
+# Adicione a dependência `Depends(get_current_active_user)` aos outros endpoints GET se necessário.
 @router.get("/{item_id}", response_model=schema_repertorio.RepertorioItem)
 def read_repertorio_item(
     item_id: int,
