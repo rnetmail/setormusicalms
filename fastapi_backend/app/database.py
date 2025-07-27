@@ -4,7 +4,10 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from .config import settings
+try:
+    from .config import settings
+except ImportError:
+    from config import settings
 
 # Garante que o diretório para o arquivo do banco de dados exista.
 # Extrai o caminho do arquivo da URL de conexão.
