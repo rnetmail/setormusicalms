@@ -1,51 +1,39 @@
 # fastapi_backend/init_admin.py
-# Versão 01 25/07/2025 14:35
+# Versão 02 - Criação de Admin Robusta
+
+from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
-from models.user import User
-from auth.password import get_password_hash
-import models # Importa todos os modelos para garantir a criação das tabelas
+from crud import user as crud_user
+from schemas import user as schema_user
+from models import user as model_user
 
-def create_database_and_tables():
-    """Cria o ficheiro do banco de dados e todas as tabelas, se não existirem."""
-    print("A criar tabelas...")
+def init_db():
+    # Cria as tabelas
     Base.metadata.create_all(bind=engine)
-    print("✅ Tabelas criadas com sucesso!")
 
-def create_admin_user():
-    """Cria o usuário 'admin' com permissões de superusuário se ele não existir."""
-    db = SessionLocal()
+    db: Session = SessionLocal()
     try:
-        admin_username = "admin"
-        admin_password = "Setor@MS25"
-        
-        admin_user = db.query(User).filter(User.username == admin_username).first()
-        
+        # Verifica se o usuário admin já existe
+        admin_user = crud_user.get_user_by_username(db, username="admin")
         if not admin_user:
-            print(f"A criar o usuário '{admin_username}'...")
-            admin_user = User(
-                username=admin_username,
+            print("Criando usuário administrador padrão...")
+            # CORREÇÃO: Garante que o usuário seja criado com todos os status corretos
+            user_in = schema_user.UserCreate(
+                username="admin",
+                password="Setor@MS25",
                 email="admin@setormusicalms.art.br",
-                hashed_password=get_password_hash(admin_password),
-                first_name="Admin",
-                last_name="Sistema",
+                full_name="Administrador do Sistema",
                 is_active=True,
                 is_staff=True,
                 is_superuser=True
             )
-            db.add(admin_user)
-            db.commit()
-            print("✅ Usuário admin criado!")
+            crud_user.create_user(db=db, user=user_in)
+            print("Usuário administrador criado com sucesso.")
         else:
-            print(f"Usuário '{admin_username}' já existe, nenhuma ação necessária.")
-        
-    except Exception as e:
-        print(f"❌ Erro ao criar/verificar o usuário admin: {e}")
-        db.rollback()
+            print("Usuário administrador já existe.")
     finally:
         db.close()
 
 if __name__ == "__main__":
-    print("🚀 A iniciar a inicialização do banco de dados...")
-    create_database_and_tables()
-    create_admin_user()
-    print("✅ Processo de inicialização concluído!")
+    print("Inicializando o banco de dados...")
+    init_db()
