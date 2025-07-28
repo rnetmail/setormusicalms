@@ -105,10 +105,13 @@ jobs:
             cd $PROJECT_DIR
 
             # ==================================================================
-            # AQUI ESTÁ A ALTERAÇÃO. ATUALIZE O CÓDIGO-FONTE NA VPS.
+            # ATUALIZA O CÓDIGO-FONTE NA VPS.
             # ==================================================================
-            echo ">>> [2/7] Atualizando o código-fonte com git pull..."
-            git pull origin main
+            echo ">>> [2/7] Atualizando o código-fonte com git..."
+            # Comando mais robusto para garantir que o repo local fique
+            # idêntico ao remoto, descartando quaisquer alterações locais.
+            git fetch origin
+            git reset --hard origin/main
             
             echo ">>> [3/7] Autenticando no GHCR..."
             mkdir -p ~/.docker
