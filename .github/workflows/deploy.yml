@@ -118,7 +118,8 @@ jobs:
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
 
             echo ">>> [4/7] Parando e removendo serviços antigos..."
-            docker compose down --remove-orphans --volumes
+            # docker compose down --remove-orphans --volumes
+            docker compose down --remove-orphans  
             
             echo ">>> [5/7] Baixando as imagens mais recentes..."
             docker compose pull
