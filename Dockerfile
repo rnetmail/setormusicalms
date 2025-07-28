@@ -20,6 +20,12 @@ RUN rm -rf .next
 # Executa o build de produção
 RUN npm run build
 
+# ==================================================================
+# PASSO DE DEPURAÇÃO: Liste o conteúdo da pasta .next
+# Isso nos mostrará se a pasta 'standalone' foi criada.
+# ==================================================================
+RUN ls -la .next
+
 # Estágio 2: Runner
 FROM node:20-alpine AS runner
 WORKDIR /app
