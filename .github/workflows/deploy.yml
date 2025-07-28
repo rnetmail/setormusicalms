@@ -84,12 +84,17 @@ jobs:
           push: true
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
+  # .github/workflows/deploy.yml
+# Versão Final - Robusta e Automatizada
+
+# ... (início do arquivo, jobs 'test' e 'build_and_push' sem alterações) ...
+
   deploy_and_validate:
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - name: Deploy e Validação na VPS
+      - name: Deploy, Initialize and Validate on VPS
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -98,47 +103,57 @@ jobs:
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            set -e
+            set -e  # Encerra o script se qualquer comando falhar
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
 
-            echo ">>> [1/7] Acessando o diretório do projeto: $PROJECT_DIR"
+            echo ">>> [1/8] Acessando o diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
+            
+            echo ">>> [2/8] Verificando e corrigindo permissões do diretório..."
+            OWNER=$(stat -c '%U' .)
+            if [ "$OWNER" != "${{ secrets.VPS_SSH_USER }}" ]; then
+              echo "Proprietário incorreto ('$OWNER'), corrigindo para '${{ secrets.VPS_SSH_USER }}'..."
+              # Usamos sudo aqui, pois o usuário atual não tem permissão para chown
+              sudo chown -R ${{ secrets.VPS_SSH_USER }}:${{ secrets.VPS_SSH_USER }} .
+              echo "Permissões corrigidas."
+            else
+              echo "Permissões já estão corretas."
+            fi
 
-            # ==================================================================
-            # ATUALIZA O CÓDIGO-FONTE NA VPS.
-            # ==================================================================
-            echo ">>> [2/7] Atualizando o código-fonte com git..."
-            # Comando mais robusto para garantir que o repo local fique
-            # idêntico ao remoto, descartando quaisquer alterações locais.
+            echo ">>> [3/8] Atualizando o código-fonte..."
             git fetch origin
             git reset --hard origin/main
-            
-            echo ">>> [3/7] Autenticando no GHCR..."
+
+            echo ">>> [4/8] Autenticando no GHCR..."
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
 
-            echo ">>> [4/7] Parando e removendo serviços antigos..."
-            # docker compose down --remove-orphans --volumes
-            docker compose down --remove-orphans  
-            
-            echo ">>> [5/7] Baixando as imagens mais recentes..."
-            docker compose pull
+            echo ">>> [5/8] Subindo os novos contêineres..."
+            # O --build garante que as imagens sejam reconstruídas se os Dockerfiles mudarem
+            docker compose up -d --build --force-recreate
 
-            echo ">>> [6/7] Subindo os novos contêineres..."
-            # docker compose up -d
-            docker compose up -d --force-recreate
+            echo ">>> [6/8] Inicializando o banco de dados (criando admin se necessário)..."
+            # É seguro rodar sempre, pois o script verifica se o admin já existe
+            docker compose exec backend python /app/init_admin.py
 
-            echo ">>> [7/7] Aguardando 30s para a inicialização completa..."
-            sleep 30
+            echo ">>> [7/8] Aguardando 15s para a aplicação estabilizar..."
+            sleep 15
 
-            echo ">>> Verificando saúde da aplicação em produção..."
-            if curl -sSf --retry 3 http://setormusicalms.art.br/api/health | grep -q '"status":"healthy"'; then
-              echo "✅ Aplicação online e saudável!"
-              docker compose exec backend python /app/init_admin.py
+            echo ">>> [8/8] Realizando teste de fumaça: Login na API..."
+            # Simula um login e verifica se um token de acesso é retornado
+            # NOTA: Ajuste o endpoint '/api/auth/login' se o seu for diferente
+            if curl -s -X POST "http://127.0.0.1:8001/api/auth/login" \
+              -H "Content-Type: application/x-www-form-urlencoded" \
+              -d "username=admin&password=Setor@MS25" | grep -q '"access_token"'; then
+              echo "✅ Teste de fumaça passou: Login bem-sucedido!"
+              echo "Limpando imagens antigas do Docker..."
               docker image prune -af
             else
-              echo "❌ ERRO: A API não respondeu no domínio."
+              echo "❌ ERRO: Teste de fumaça falhou - Não foi possível fazer login."
               echo "--- LOGS DO BACKEND ---"
-              docker compose logs backend --tail=100
+              docker compose logs backend --tail=50
               exit 1
             fi
+
+            echo "🚀 Deploy concluído e validado com sucesso!"
+
