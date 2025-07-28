@@ -1,7 +1,9 @@
 # docker-compose.yml
-# Versão 113 - Final com Proxy Interno
+# Versão 114 - Final, Corrigida e Otimizada para Produção
 
 services:
+  # --- SERVIÇO DE BACKEND (FastAPI) ---
+  # Nenhuma alteração necessária aqui.
   backend:
     build: ./fastapi_backend
     container_name: setormusicalms-backend
@@ -10,37 +12,42 @@ services:
       - sqlite_data:/app/data
     environment:
       - DATABASE_URL=sqlite:///data/setormusical.db
-    # Não expõe mais a porta para o host, a comunicação é interna.
     expose:
       - "8000"
     restart: unless-stopped
 
+  # --- SERVIÇO DE FRONTEND (Next.js) ---
+  # A única alteração é a remoção da linha 'command'.
+  # O novo Dockerfile do frontend agora gerencia como a aplicação é iniciada.
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: setormusicalms-frontend
-    # Não expõe mais a porta para o host.
-    command: npx next start -p 3000 -H 0.0.0.0
+    # A linha 'command' foi REMOVIDA daqui.
     expose:
       - "3000"
     depends_on:
       - backend
     restart: unless-stopped
 
+  # --- SERVIÇO DE PROXY REVERSO (Nginx) ---
+  # Nenhuma alteração necessária aqui.
   nginx-proxy:
     image: nginx:stable-alpine
     container_name: setormusicalms-nginx-proxy
     ports:
-      # Expõe a porta 80 do proxy para a porta 8001 da VPS, que o Nginx externo espera.
+      # Expõe a porta 80 do proxy para a porta 8001 da VPS.
       - "8001:80"
     volumes:
-      # Monta o nosso novo arquivo de configuração dentro do contêiner.
+      # Monta o arquivo de configuração do Nginx.
       - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - frontend
       - backend
     restart: unless-stopped
 
+# --- VOLUME PERSISTENTE PARA O BANCO DE DADOS ---
+# Garante que os dados do SQLite não sejam perdidos ao recriar o contêiner do backend.
 volumes:
   sqlite_data:
