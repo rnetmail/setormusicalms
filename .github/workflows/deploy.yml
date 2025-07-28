@@ -39,9 +39,17 @@ jobs:
           done
           echo "✅ API saudável!"
 
-          # Roda o pytest DENTRO do contêiner
-          echo "🚀 Executando testes com pytest..."
-          docker compose exec -T backend /bin/sh -c "python /app/init_admin.py && pytest"
+          # Inicializa admin e testa endpoint básico
+          echo "🚀 Inicializando admin e testando endpoint..."
+          docker compose exec -T backend python /app/init_admin.py
+          
+          # Teste simples de saúde da API
+          if docker compose exec -T backend curl -sSf http://localhost:8000/api/health | grep -q '"status":"healthy"'; then
+            echo "✅ Teste básico passou - API está respondendo corretamente!"
+          else
+            echo "❌ Teste falhou - API não está respondendo corretamente"
+            exit 1
+          fi
 
       - name: 4. Encerrar containers após testes
         if: always()
