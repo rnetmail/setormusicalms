@@ -1,9 +1,6 @@
 # docker-compose.yml
 # Versão 114 - Final, Corrigida e Otimizada para Produção
-
 services:
-  # --- SERVIÇO DE BACKEND (FastAPI) ---
-  # Nenhuma alteração necessária aqui.
   backend:
     build: ./fastapi_backend
     container_name: setormusicalms-backend
@@ -16,38 +13,31 @@ services:
       - "8000"
     restart: unless-stopped
 
-  # --- SERVIÇO DE FRONTEND (Next.js) ---
-  # A única alteração é a remoção da linha 'command'.
-  # O novo Dockerfile do frontend agora gerencia como a aplicação é iniciada.
   frontend:
+    # Este serviço agora constrói uma imagem Nginx com os arquivos do Vite
     build:
       context: .
       dockerfile: Dockerfile
     container_name: setormusicalms-frontend
-    # A linha 'command' foi REMOVIDA daqui.
+    # O Nginx dentro deste contêiner ouve na porta 80
     expose:
-      - "3000"
+      - "80"
     depends_on:
       - backend
     restart: unless-stopped
 
-  # --- SERVIÇO DE PROXY REVERSO (Nginx) ---
-  # Nenhuma alteração necessária aqui.
   nginx-proxy:
     image: nginx:stable-alpine
     container_name: setormusicalms-nginx-proxy
     ports:
-      # Expõe a porta 80 do proxy para a porta 8001 da VPS.
       - "8001:80"
     volumes:
-      # Monta o arquivo de configuração do Nginx.
+      # Este arquivo de configuração precisa ser ajustado
       - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - frontend
       - backend
     restart: unless-stopped
 
-# --- VOLUME PERSISTENTE PARA O BANCO DE DADOS ---
-# Garante que os dados do SQLite não sejam perdidos ao recriar o contêiner do backend.
 volumes:
   sqlite_data:
