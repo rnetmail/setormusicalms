@@ -1,46 +1,43 @@
-# Dockerfile
-# Versão 117 - FINAL PARA O FRONTEND (React + Node.js)
-
-# Estágio 1: Builder - Instala dependências e compila a aplicação
+# Estágio 1: Builder
 FROM node:20-alpine AS builder
-
-# Define o diretório de trabalho dentro do contêiner
 WORKDIR /app
 
-# Copia os arquivos de gerenciamento de pacotes
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+# Copia apenas os arquivos de manifesto de pacote primeiro
+# Isso aproveita o cache do Docker se as dependências não mudarem
+COPY package.json ./
+COPY package-lock.json ./
 
-# Instala as dependências de produção e desenvolvimento
+# Instala todas as dependências
 RUN npm install
 
-# Copia o resto do código-fonte da aplicação
+# Agora copia o resto dos arquivos do projeto
+# Isso inclui /app, /pages, /public, next.config.mjs, etc.
 COPY . .
+
+# Força a remoção de um build antigo, se houver, para evitar conflitos
+RUN rm -rf .next
 
 # Executa o build de produção
 RUN npm run build
 
-# Estágio 2: Runner - Cria a imagem final, leve e otimizada
+# Estágio 2: Runner
 FROM node:20-alpine AS runner
-
 WORKDIR /app
 
-# Define o ambiente para produção
 ENV NODE_ENV=production
 
-# Copia os arquivos otimizados do estágio de build
+# Cria um usuário com menos privilégios
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copia os artefatos de build do estágio anterior
+# Esta é a parte que estava falhando
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Cria um usuário com menos privilégios para rodar a aplicação
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Define o usuário para rodar a aplicação
 USER nextjs
 
-# Expõe a porta que a aplicação vai rodar
 EXPOSE 3000
 
-# Define o comando para iniciar o servidor de produção
 CMD ["node", "server.js"]
