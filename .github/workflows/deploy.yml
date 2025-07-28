@@ -115,7 +115,8 @@ jobs:
             docker compose pull
 
             echo ">>> [5/6] Subindo os novos contêineres..."
-            docker compose up -d
+            # docker compose up -d
+            docker compose up -d --force-recreate
 
             echo ">>> [6/6] Aguardando 30s para a inicialização completa..."
             sleep 30
