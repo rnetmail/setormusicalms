@@ -1,49 +1,30 @@
-# Estágio 1: Builder
+# Estágio 1: Builder - Compila o projeto Vite
 FROM node:20-alpine AS builder
+
 WORKDIR /app
 
-# Copia apenas os arquivos de manifesto de pacote primeiro
-# Isso aproveita o cache do Docker se as dependências não mudarem
+# Copia os arquivos de manifesto de pacote
 COPY package.json ./
 COPY package-lock.json ./
 
-# Instala todas as dependências
+# Instala as dependências
 RUN npm install
 
-# Agora copia o resto dos arquivos do projeto
-# Isso inclui /app, /pages, /public, next.config.mjs, etc.
+# Copia o resto do código-fonte
 COPY . .
 
-# Força a remoção de um build antigo, se houver, para evitar conflitos
-RUN rm -rf .next
-
-# Executa o build de produção
+# Executa o build de produção (vite build)
 RUN npm run build
 
-# ==================================================================
-# PASSO DE DEPURAÇÃO: Liste o conteúdo da pasta .next
-# Isso nos mostrará se a pasta 'standalone' foi criada.
-# ==================================================================
-RUN ls -la .next
+# Estágio 2: Runner - Serve os arquivos estáticos com Nginx
+FROM nginx:stable-alpine
 
-# Estágio 2: Runner
-FROM node:20-alpine AS runner
-WORKDIR /app
+# Copia os arquivos compilados da pasta 'dist' do estágio anterior
+# para o diretório padrão do Nginx que serve HTML.
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-ENV NODE_ENV=production
+# Expõe a porta 80, que é a porta padrão do Nginx
+EXPOSE 80
 
-# Cria um usuário com menos privilégios
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Copia os artefatos de build do estágio anterior
-# Esta é a parte que estava falhando
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
-
-EXPOSE 3000
-
-CMD ["node", "server.js"]
+# O comando padrão da imagem do Nginx já inicia o servidor,
+# então não precisamos de um CMD.
