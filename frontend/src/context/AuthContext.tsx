@@ -1,53 +1,44 @@
-// frontend/src/context/AuthContext.tsx
-
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import * as api from '../services/api'; // Importa as funções de chamada da API
+import React, { createContext, useState, useContext, ReactNode } from 'react';
+import { login as apiLogin, logout as apiLogout } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
-  isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
-  logout: () => void;
+    isAuthenticated: boolean;
+    login: (user: string, pass: string) => Promise<{ success: boolean; message: string }>;
+    logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Verifica se existe um token no localStorage para manter o usuário logado.
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('authToken'));
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!sessionStorage.getItem('authToken'));
+    const navigate = useNavigate();
 
-  const login = async (username: string, password: string) => {
-    try {
-      const data = await api.login(username, password);
-      if (data && data.access_token) {
-        localStorage.setItem('authToken', data.access_token);
-        setIsAuthenticated(true);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Erro no login:', error);
-      return false;
-    }
-  };
+    const login = async (user: string, pass: string) => {
+        const response = await apiLogin(user, pass);
+        if (response.success) {
+            setIsAuthenticated(true);
+        }
+        return response;
+    };
 
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    setIsAuthenticated(false);
-    // O redirecionamento será feito pelo componente que chamar o logout.
-  };
+    const logout = async () => {
+        await apiLogout();
+        setIsAuthenticated(false);
+        navigate('/gestao/login');
+    };
 
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+    return (
+        <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
-// Hook customizado para facilitar o uso do contexto de autenticação.
 export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
-  }
-  return context;
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
 };
