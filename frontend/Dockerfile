@@ -1,27 +1,37 @@
-# Dockerfile - Versão Final e Corrigida
+# frontend/Dockerfile - Otimizado para Next.js
 
-# Estágio 1: Builder - Instala dependências e compila o projeto Vite
+# Estágio 1: Builder
 FROM node:20-alpine AS builder
-
 WORKDIR /app
 
-# 1. Copia TODOS os arquivos do projeto primeiro, incluindo o package.json mais recente.
-COPY . .
-
-# 2. AGORA executa o npm install. Ele lerá o package.json atualizado
-#    e instalará TODAS as dependências, incluindo o @mui/material.
+# Instala dependências primeiro para aproveitar o cache do Docker
+COPY package.json package-lock.json ./
 RUN npm install
 
-# 3. Executa o build de produção. Agora o @mui/material existe e o build funcionará.
+# Copia o resto do código do frontend
+COPY . .
+
+# Executa o build de produção do Next.js
 RUN npm run build
 
-# Estágio 2: Runner - Serve os arquivos estáticos com Nginx
-FROM nginx:stable-alpine
+# Estágio 2: Runner
+FROM node:20-alpine AS runner
+WORKDIR /app
 
-# Copia os arquivos compilados da pasta 'dist' do estágio anterior
-COPY --from=builder /app/dist /usr/share/nginx/html
+ENV NODE_ENV=production
 
-# Copia a configuração customizada do Nginx para lidar com a SPA
-COPY nginx-frontend.conf /etc/nginx/conf.d/default.conf
+# Cria um usuário com menos privilégios para segurança
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+USER nextjs
 
-EXPOSE 80
+# Copia os artefatos de build otimizados do estágio anterior
+# A pasta 'standalone' é criada pelo 'output: standalone' no next.config.js
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+EXPOSE 3000
+
+# Inicia o servidor Node.js otimizado do Next.js
+CMD ["node", "server.js"]
