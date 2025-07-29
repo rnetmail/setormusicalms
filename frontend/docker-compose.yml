@@ -16,12 +16,11 @@ services:
   frontend:
     # Este serviço agora constrói uma imagem Nginx com os arquivos do Vite
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ./frontend # Aponta para a nova pasta
     container_name: setormusicalms-frontend
-    # O Nginx dentro deste contêiner ouve na porta 80
+    # O servidor Next.js otimizado roda na porta 3000
     expose:
-      - "80"
+      - "3000"
     depends_on:
       - backend
     restart: unless-stopped
