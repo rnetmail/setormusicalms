@@ -1,37 +1,13 @@
-# frontend/Dockerfile - Otimizado para Next.js
+# frontend/Dockerfile - Versão Final para servir arquivos estáticos (sem build)
 
-# Estágio 1: Builder
-FROM node:20-alpine AS builder
-WORKDIR /app
+# Usa uma imagem Nginx leve
+FROM nginx:stable-alpine
 
-# Instala dependências primeiro para aproveitar o cache do Docker
-COPY package.json package-lock.json ./
-RUN npm install
+# Copia TODOS os arquivos do seu projeto frontend para a pasta que o Nginx serve
+# Isso inclui index.html, index.tsx, pages/, components/, etc.
+COPY . /usr/share/nginx/html
 
-# Copia o resto do código do frontend
-COPY . .
+# Copia a configuração do Nginx para lidar com o roteamento do React (SPA)
+COPY nginx-frontend.conf /etc/nginx/conf.d/default.conf
 
-# Executa o build de produção do Next.js
-RUN npm run build
-
-# Estágio 2: Runner
-FROM node:20-alpine AS runner
-WORKDIR /app
-
-ENV NODE_ENV=production
-
-# Cria um usuário com menos privilégios para segurança
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-USER nextjs
-
-# Copia os artefatos de build otimizados do estágio anterior
-# A pasta 'standalone' é criada pelo 'output: standalone' no next.config.js
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-EXPOSE 3000
-
-# Inicia o servidor Node.js otimizado do Next.js
-CMD ["node", "server.js"]
+EXPOSE 80
