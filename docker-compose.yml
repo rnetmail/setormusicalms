@@ -16,12 +16,12 @@ services:
   frontend:
     # Este serviço agora constrói uma imagem Nginx com os arquivos do Vite
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
     container_name: setormusicalms-frontend
     # O Nginx dentro deste contêiner ouve na porta 80
     expose:
-      - "80"
+      - "3000"
     depends_on:
       - backend
     restart: unless-stopped
