@@ -1,0 +1,43 @@
+# docker-compose.yml
+# Versão 114 - Final, Corrigida e Otimizada para Produção
+services:
+  backend:
+    build: ./fastapi_backend
+    container_name: setormusicalms-backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - sqlite_data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///data/setormusical.db
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  frontend:
+    # Este serviço agora constrói uma imagem Nginx com os arquivos do Vite
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: setormusicalms-frontend
+    # O Nginx dentro deste contêiner ouve na porta 80
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  nginx-proxy:
+    image: nginx:stable-alpine
+    container_name: setormusicalms-nginx-proxy
+    ports:
+      - "8001:80"
+    volumes:
+      # Este arquivo de configuração precisa ser ajustado
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:
