@@ -1,10 +1,11 @@
 # /fastapi_backend/app/routers/agenda.py
-# v1.0 - 2025-07-30 01:52:10 - Corrige importações relativas e dependências.
+# v1.1 - 2025-07-30 02:15:19 - Corrige importações para o padrão absoluto do projeto.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+# Correção: Importações absolutas a partir da raiz do pacote 'app'
 from app import schemas
 from app.database import get_db
 from app.crud import agenda as crud_agenda
@@ -19,9 +20,9 @@ def create_agenda_item(
     current_user: schemas.User = Depends(crud_user.get_current_active_user)
 ):
     """
-    Cria um novo item na agenda. Requer autenticação.
+    Cria um novo item na agenda. Requer autenticação de superusuário.
     """
-    if not current_user.is_superuser: # Exemplo: apenas superusuários podem criar eventos
+    if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Not enough permissions to create an agenda item")
     return crud_agenda.create_agenda_item(db=db, item=item)
 
