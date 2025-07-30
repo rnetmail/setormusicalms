@@ -1,41 +1,37 @@
-# fastapi_backend/app/routers/auth.py
-# Versão 07 - 29/07/2025 05:10 - Corrige importações relativas e dependências
+# /app/app/routers/auth.py
+# v1.0 - 2025-07-30 01:38:08 - Corrige importações relativas e adiciona dependências.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import timedelta
 
-# CORREÇÃO: Usa importações relativas para funcionar dentro do módulo 'app'
-from .. import crud, schemas
-from ..auth import security
-from ..database import get_db
-from ..config import settings
+from app import schemas
+from app.core import security
+from app.core.database import get_db
+from app.crud import user as crud_user
 
 router = APIRouter()
 
 @router.post("/login", response_model=schemas.Token)
-def login_for_access_token(
-    db: Session = Depends(get_db), 
-    form_data: OAuth2PasswordRequestForm = Depends()
-):
+def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
     """
-    Processa o login do usuário e retorna um token de acesso JWT.
-    A rota completa será /api/auth/login.
+    Autentica o usuário e retorna um token de acesso.
     """
-    user = crud.user.authenticate_user(
-        db, username=form_data.username, password=form_data.password
-    )
+    user = crud_user.authenticate_user(db, username=form_data.username, password=form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário ou senha incorretos",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={"sub": user.username}
     )
-
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me", response_model=schemas.User)
+def read_users_me(current_user: schemas.User = Depends(crud_user.get_current_active_user)):
+    """
+    Retorna os dados do usuário autenticado.
+    """
+    return current_user
