@@ -1,15 +1,16 @@
 # /fastapi_backend/app/routers/auth.py
-# v1.1 - 2025-07-30 02:05:10 - Corrige importação de 'schemas' e 'crud'.
+# v1.2 - 2025-07-30 02:25:00 - Corrige para importações relativas.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-# Correção: Importar diretamente dos módulos, não do pacote 'app'
-from app import schemas
-from app.core import security
-from app.database import get_db
-from app.crud import user as crud_user
+# Correção Definitiva: Usar importações relativas
+# ".." significa "subir um nível no diretório"
+from .. import schemas
+from ..core import security
+from ..database import get_db
+from ..crud import user as crud_user
 
 router = APIRouter()
 
