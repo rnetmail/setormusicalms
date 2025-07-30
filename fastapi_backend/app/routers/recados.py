@@ -1,10 +1,11 @@
 # /fastapi_backend/app/routers/recados.py
-# v1.0 - 2025-07-30 01:50:25 - Corrige importações relativas e dependências.
+# v1.1 - 2025-07-30 02:14:00 - Corrige importações para o padrão absoluto do projeto.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+# Correção: Importações absolutas a partir da raiz do pacote 'app'
 from app import schemas
 from app.database import get_db
 from app.crud import recado as crud_recado
@@ -54,7 +55,6 @@ def delete_recado(
     if db_recado is None:
         raise HTTPException(status_code=404, detail="Recado not found")
     
-    # Lógica de permissão (simplificada)
     if db_recado.owner_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Not enough permissions")
         
