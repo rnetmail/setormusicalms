@@ -1,27 +1,30 @@
 // frontend/src/components/LoadingSpinner.tsx
+// Versão 17 - 29/07/2025 06:00 - Componente de loading para uso em toda a aplicação
 
 import React from 'react';
 import { Box, CircularProgress, Typography } from '@mui/material';
 
-/**
- * Um componente reutilizável que exibe um spinner de carregamento centralizado.
- * Ideal para ser mostrado enquanto os dados estão sendo buscados da API.
- */
-const LoadingSpinner: React.FC = () => {
+interface LoadingSpinnerProps {
+  message?: string;
+}
+
+const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
+  message = "Carregando..." 
+}) => {
   return (
     <Box
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
         alignItems: 'center',
-        height: '80vh', // Ocupa a maior parte da altura da tela
-        width: '100%',
+        justifyContent: 'center',
+        minHeight: '200px',
+        gap: 2,
       }}
     >
-      <CircularProgress size={60} /> {/* O spinner em si */}
-      <Typography variant="h6" sx={{ mt: 2 }}>
-        Carregando...
+      <CircularProgress size={40} />
+      <Typography variant="body1" color="text.secondary">
+        {message}
       </Typography>
     </Box>
   );
