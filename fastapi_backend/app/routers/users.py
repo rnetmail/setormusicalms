@@ -1,10 +1,11 @@
 # /fastapi_backend/app/routers/users.py
-# v1.0 - 2025-07-30 01:48:15 - Corrige importações relativas e dependências.
+# v1.1 - 2025-07-30 02:12:00 - Corrige importações para o padrão absoluto do projeto.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+# Correção: Importações absolutas a partir da raiz do pacote 'app'
 from app import schemas
 from app.database import get_db
 from app.crud import user as crud_user
