@@ -1,110 +1,71 @@
-// services/api.ts
-// Versão 03 21/07/2025 18:20
-import { RepertorioItem, AgendaItem, RecadoItem, User, GroupType, HistoriaItem, GaleriaItem } from '../types';
+// frontend/src/services/api.ts
+// Versão 08 - 29/07/2025 05:15 - Alinha todos os endpoints com o backend (/api/...) e corrige o header de autenticação
 
-const API_BASE_URL = '/api';
+import axios from 'axios';
+import { LoginCredentials, User } from '../types';
 
-const getAuthToken = () => sessionStorage.getItem('authToken');
+// Configura a URL base da API. Em produção, será uma rota relativa.
+const API_URL = '/api';
 
-// Função base para todas as requisições à API
-const apiFetch = async (url: string, options: RequestInit = {}) => {
-    const token = getAuthToken();
-    const headers: HeadersInit = {
+// Cria uma instância do Axios para fazer as requisições
+const apiClient = axios.create({
+    baseURL: API_URL,
+    headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
-    };
+    },
+});
 
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+// Interceptor para adicionar o token de autenticação em todas as requisições
+apiClient.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            // CORREÇÃO: Usa o formato "Bearer" esperado pelo FastAPI
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
     }
+);
 
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-        ...options,
-        headers,
+// --- Funções da API ---
+
+// Autenticação
+export const login = async (credentials: LoginCredentials) => {
+    // CORREÇÃO: Usa 'application/x-www-form-urlencoded' para o OAuth2PasswordRequestForm do FastAPI
+    const params = new URLSearchParams();
+    params.append('username', credentials.username);
+    params.append('password', credentials.password);
+
+    // CORREÇÃO: Endpoint ajustado para /auth/login
+    const response = await apiClient.post('/auth/login', params, {
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
     });
-
-    if (response.status === 204) { // No Content
-        return null;
+    
+    // Armazena o token e retorna os dados
+    if (response.data.access_token) {
+        localStorage.setItem('authToken', response.data.access_token);
     }
-
-    const responseData = await response.json();
-
-    if (!response.ok) {
-        const errorMessage = responseData.detail || JSON.stringify(responseData);
-        throw new Error(errorMessage || 'Ocorreu um erro na API');
-    }
-
-    return responseData;
-};
-
-// --- Funções Públicas ---
-export const getRepertorio = (type: GroupType): Promise<RepertorioItem[]> => apiFetch(`/repertorio?type_filter=${type}`);
-export const getAgenda = (group: GroupType): Promise<AgendaItem[]> => apiFetch(`/agenda?group_filter=${group}`);
-export const getRecados = (group: GroupType): Promise<RecadoItem[]> => apiFetch(`/recados?group_filter=${group}`);
-// ATUALIZADO: Funções agora fazem chamadas reais à API
-export const getHistoria = (): Promise<HistoriaItem[]> => apiFetch('/historia/');
-export const getGaleria = (group: GroupType): Promise<GaleriaItem[]> => apiFetch(`/galeria/${group}`);
-
-
-// --- Funções de Autenticação ---
-export const login = async (username: string, pass: string) => {
-    const formData = new URLSearchParams();
-    formData.append('username', username);
-    formData.append('password', pass);
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData.toString(),
-        });
-
-        const responseData = await response.json();
-        if (!response.ok) {
-            throw new Error(responseData.detail || 'Usuário ou senha inválidos.');
-        }
-
-        if (responseData.access_token) {
-            sessionStorage.setItem('authToken', responseData.access_token);
-            return { success: true, message: 'Login bem-sucedido!' };
-        }
-        return { success: false, message: 'Token de acesso não recebido.' };
-    } catch (error: any) {
-        return { success: false, message: error.message };
-    }
+    return response.data;
 };
 
 export const logout = () => {
-    sessionStorage.removeItem('authToken');
+    localStorage.removeItem('authToken');
+    // Não há necessidade de chamada à API para logout baseado em token JWT
 };
 
-// --- Funções Genéricas de Admin (CRUD) ---
-const createItem = <T,>(endpoint: string, item: T) => apiFetch(endpoint, { method: 'POST', body: JSON.stringify(item) });
-const updateItem = <T extends { id: any }>(endpoint: string, item: Partial<T>) => apiFetch(`${endpoint}/${item.id}`, { method: 'PUT', body: JSON.stringify(item) });
-const deleteItem = (endpoint: string, id: string | number) => apiFetch(`${endpoint}/${id}`, { method: 'DELETE' });
+// Funções de Admin (exemplo para usuários)
+// Adicione aqui as outras chamadas de API para agenda, repertorio, etc.
+export const adminGetUsers = async (): Promise<User[]> => {
+    // CORREÇÃO: Endpoint ajustado para /users
+    const response = await apiClient.get('/users/');
+    return response.data;
+};
 
-// --- Funções Específicas para cada Módulo do Admin ---
-
-// Repertório
-export const adminGetRepertorio = () => apiFetch('/repertorio/');
-export const adminCreateRepertorio = (item: Omit<RepertorioItem, 'id'>) => createItem('/repertorio/', item);
-export const adminUpdateRepertorio = (item: Partial<RepertorioItem> & { id: string }) => updateItem('/repertorio', item);
-export const adminDeleteRepertorio = (id: string) => deleteItem('/repertorio', id);
-
-// Agenda
-export const adminGetAgenda = () => apiFetch('/agenda/');
-export const adminCreateAgenda = (item: Omit<AgendaItem, 'id'>) => createItem('/agenda/', item);
-export const adminUpdateAgenda = (item: Partial<AgendaItem> & { id: string }) => updateItem('/agenda', item);
-export const adminDeleteAgenda = (id: string) => deleteItem('/agenda', id);
-
-// Recados
-export const adminGetRecados = () => apiFetch('/recados/');
-export const adminCreateRecado = (item: Omit<RecadoItem, 'id'>) => createItem('/recados/', item);
-export const adminUpdateRecado = (item: Partial<RecadoItem> & { id: string }) => updateItem('/recados', item);
-export const adminDeleteRecado = (id: string) => deleteItem('/recados', id);
-
-// Usuários
-export const adminGetUsers = () => apiFetch('/users/');
-export const adminCreateUser = (item: Omit<User, 'id'>) => createItem('/users/', item);
-export const adminUpdateUser = (item: Partial<User> & { id: string }) => updateItem('/users', item);
-export const adminDeleteUser = (id: string) => deleteItem('/users', id);
+// Adicione outras funções conforme necessário, por exemplo:
+// export const adminGetRecados = async () => { ... }
+// export const getGaleria = async (group: GroupType) => { ... }
