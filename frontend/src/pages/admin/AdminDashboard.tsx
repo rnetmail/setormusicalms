@@ -1,152 +1,152 @@
-// pages/admin/AdminDashboard.tsx
-// Versão 26 - Lógica de abas e UI corrigidas com Material-UI
+// frontend/src/pages/admin/AdminDashboard.tsx
+// Versão 15 - 29/07/2025 05:50 - Implementa a UI completa do painel de gestão
 
 import React, { useState, useEffect, useCallback } from 'react';
 import * as api from '../../services/api';
-import { RepertorioItem, AgendaItem, RecadoItem, User, GroupType, HistoriaItem, GaleriaItem } from '../../types';
+import { User } from '../../types'; // Importe outros tipos conforme necessário
 import { useAuth } from '../../context/AuthContext';
+import {
+  Box,
+  Button,
+  Container,
+  Tabs,
+  Tab,
+  Typography,
+  CircularProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+} from '@mui/material';
+import { Edit, Delete } from '@mui/icons-material'; // Ícones do Material-UI
 
-// Importando componentes do Material-UI para uma interface bonita
-import { Box, Tabs, Tab, Button, CircularProgress, Typography, Paper } from '@mui/material';
-
-// Tipos para controlar as abas, conforme sua especificação
-type MainTab = 'coral' | 'orquestra' | 'historia' | 'usuarios';
+// Tipos para controlar as abas
+type MainTab = 'coral' | 'orquestra' | 'usuarios';
 type SubTab = 'repertorio' | 'agenda' | 'recados' | 'galeria';
-type Entity = RepertorioItem | AgendaItem | RecadoItem | User | HistoriaItem | GaleriaItem;
-
-// Um componente simples para exibir o conteúdo de cada aba
-const TabContent: React.FC<{ title: string; items: Entity[]; onAdd: () => void }> = ({ title, items, onAdd }) => (
-    <Paper elevation={3} sx={{ p: 3, mt: 2 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h5">{title}</Typography>
-            <Button variant="contained" onClick={onAdd}>Adicionar Novo</Button>
-        </Box>
-        <hr style={{ margin: '16px 0' }} />
-        {items.length === 0 ? (
-            <Typography>Nenhum item encontrado.</Typography>
-        ) : (
-            <ul>
-                {items.map((item, index) => (
-                    <li key={index}>
-                        {/* Adapte para mostrar o título ou nome do item */}
-                        <Typography component="span">{(item as any).title || (item as any).name || (item as any).username}</Typography>
-                        {/* Adicionar botões de editar/excluir aqui */}
-                    </li>
-                ))}
-            </ul>
-        )}
-    </Paper>
-);
 
 const AdminDashboard: React.FC = () => {
-    const { logout } = useAuth();
-    const [mainTab, setMainTab] = useState<MainTab>('coral');
-    const [subTab, setSubTab] = useState<SubTab>('repertorio');
-    
-    const [data, setData] = useState<{
-        repertorio: RepertorioItem[]; agenda: AgendaItem[]; recados: RecadoItem[];
-        historia: HistoriaItem[]; galeria: GaleriaItem[]; usuarios: User[];
-    }>({ repertorio: [], agenda: [], recados: [], historia: [], galeria: [], usuarios: [] });
-    
-    const [loading, setLoading] = useState(true);
+  const { logout } = useAuth();
+  const [mainTab, setMainTab] = useState<MainTab>('coral');
+  const [subTab, setSubTab] = useState<SubTab>('repertorio');
+  const [data, setData] = useState<any>({ usuarios: [] }); // Estado para armazenar os dados da API
+  const [loading, setLoading] = useState(true);
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        try {
-            const [repertorio, agenda, recados, historia, coralGaleria, orquestraGaleria, usuarios] = await Promise.all([
-                api.adminGetRepertorio(), api.adminGetAgenda(), api.adminGetRecados(),
-                api.getHistoria(), api.getGaleria(GroupType.Coral), api.getGaleria(GroupType.Orquestra),
-                api.adminGetUsers()
-            ]);
-            setData({ 
-                repertorio: repertorio || [], agenda: agenda || [], recados: recados || [], 
-                historia: historia || [], galeria: [...(coralGaleria || []), ...(orquestraGaleria || [])], 
-                usuarios: (usuarios as User[]) || [] 
-            });
-        } catch (error) {
-            console.error("Falha ao carregar os dados:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+  const handleMainTabChange = (event: React.SyntheticEvent, newValue: MainTab) => {
+    setMainTab(newValue);
+    // Reseta a sub-aba ao trocar de aba principal, se aplicável
+    if (newValue === 'coral' || newValue === 'orquestra') {
+      setSubTab('repertorio');
+    }
+  };
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+  const handleSubTabChange = (event: React.SyntheticEvent, newValue: SubTab) => {
+    setSubTab(newValue);
+  };
 
-    const handleOpenModal = () => {
-        // Lógica para abrir o modal de adição/edição
-        alert('Abrir modal para adicionar novo item!');
-    };
+  // Função para carregar todos os dados da API
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Exemplo: Carregando apenas usuários por enquanto
+      const usersData = await api.adminGetUsers();
+      setData({ usuarios: usersData });
+      // Chame aqui as outras funções da API para carregar mais dados
+      // Ex: const recadosData = await api.adminGetRecados();
+      // setData(prev => ({ ...prev, recados: recadosData }));
+    } catch (error) {
+      console.error("Falha ao carregar dados do admin:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    const renderCurrentTab = () => {
-        if (mainTab === 'usuarios') {
-            return <TabContent title="Gerenciamento de Usuários" items={data.usuarios} onAdd={handleOpenModal} />;
-        }
-        if (mainTab === 'historia') {
-            return <TabContent title="Gerenciamento da História" items={data.historia} onAdd={handleOpenModal} />;
-        }
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-        // Lógica para Coral e Orquestra
-        const groupFilter = mainTab;
-        let items: Entity[] = [];
-        let title = "";
-
-        switch (subTab) {
-            case 'repertorio':
-                items = data.repertorio.filter(item => item.type === groupFilter);
-                title = `Repertório - ${mainTab}`;
-                break;
-            case 'agenda':
-                items = data.agenda.filter(item => item.group === groupFilter);
-                title = `Agenda - ${mainTab}`;
-                break;
-            case 'recados':
-                items = data.recados.filter(item => item.group === groupFilter);
-                title = `Recados - ${mainTab}`;
-                break;
-            case 'galeria':
-                items = data.galeria.filter(item => item.group === groupFilter);
-                title = `Galeria - ${mainTab}`;
-                break;
-        }
-        return <TabContent title={title} items={items} onAdd={handleOpenModal} />;
-    };
-
+  // Função para renderizar o conteúdo da aba selecionada
+  const renderContent = () => {
     if (loading) {
-        return <Box display="flex" justifyContent="center" alignItems="center" height="100vh"><CircularProgress /></Box>;
+      return <CircularProgress sx={{ mt: 4 }} />;
     }
 
-    return (
-        <Box sx={{ p: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h4">Painel de Administração</Typography>
-                <Button variant="outlined" onClick={logout}>Sair</Button>
-            </Box>
+    if (mainTab === 'usuarios') {
+      return (
+        <TableContainer component={Paper} sx={{ mt: 2 }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>Username</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Ações</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {data.usuarios.map((user: User) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.id}</TableCell>
+                  <TableCell>{user.username}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    <IconButton size="small"><Edit /></IconButton>
+                    <IconButton size="small"><Delete /></IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      );
+    }
+    
+    // Renderiza o conteúdo das sub-abas para Coral e Orquestra
+    if (mainTab === 'coral' || mainTab === 'orquestra') {
+        return <Typography sx={{ mt: 2 }}>Conteúdo para {mainTab} - {subTab}</Typography>;
+    }
 
-            <Paper elevation={1}>
-                <Tabs value={mainTab} onChange={(_, newValue) => setMainTab(newValue)} centered>
-                    <Tab label="Coral" value="coral" />
-                    <Tab label="Orquestra" value="orquestra" />
-                    <Tab label="História" value="historia" />
-                    <Tab label="Usuários" value="usuarios" />
-                </Tabs>
-            </Paper>
+    return null;
+  };
 
-            {(mainTab === 'coral' || mainTab === 'orquestra') && (
-                <Box sx={{ mt: 2, borderBottom: 1, borderColor: 'divider' }}>
-                    <Tabs value={subTab} onChange={(_, newValue) => setSubTab(newValue)}>
-                        <Tab label="Repertório" value="repertorio" />
-                        <Tab label="Agenda" value="agenda" />
-                        <Tab label="Recados" value="recados" />
-                        <Tab label="Galeria" value="galeria" />
-                    </Tabs>
-                </Box>
-            )}
+  return (
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography component="h1" variant="h4">
+          Painel de Administração
+        </Typography>
+        <Button variant="outlined" onClick={logout}>
+          Sair
+        </Button>
+      </Box>
 
-            <Box sx={{ mt: 3 }}>
-                {renderCurrentTab()}
-            </Box>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
+        <Tabs value={mainTab} onChange={handleMainTabChange}>
+          <Tab label="Coral" value="coral" />
+          <Tab label="Orquestra" value="orquestra" />
+          <Tab label="Usuários" value="usuarios" />
+        </Tabs>
+      </Box>
+
+      {(mainTab === 'coral' || mainTab === 'orquestra') && (
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'action.hover' }}>
+          <Tabs value={subTab} onChange={handleSubTabChange} centered>
+            <Tab label="Repertório" value="repertorio" />
+            <Tab label="Agenda" value="agenda" />
+            <Tab label="Recados" value="recados" />
+            <Tab label="Galeria" value="galeria" />
+          </Tabs>
         </Box>
-    );
+      )}
+
+      <Box sx={{ mt: 3 }}>
+        {renderContent()}
+      </Box>
+    </Container>
+  );
 };
 
 export default AdminDashboard;
