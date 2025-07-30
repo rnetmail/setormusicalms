@@ -1,10 +1,11 @@
 # /fastapi_backend/app/routers/repertorio.py
-# v1.0 - 2025-07-30 01:57:45 - Corrige importações relativas e adiciona segurança.
+# v1.1 - 2025-07-30 02:18:00 - Corrige importações para o padrão absoluto do projeto.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+# Correção: Importações absolutas a partir da raiz do pacote 'app'
 from app import schemas
 from app.database import get_db
 from app.crud import repertorio as crud_repertorio
@@ -28,7 +29,7 @@ def create_repertorio_item(
 @router.get("/", response_model=List[schemas.Repertorio])
 def read_repertorio_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """
-    Retorna a lista de músicas do repertório.
+    Retorna la lista de músicas do repertório.
     """
     items = crud_repertorio.get_repertorio_items(db, skip=skip, limit=limit)
     return items
