@@ -1,68 +1,82 @@
-# fastapi_backend/app/routers/historia.py
-# Versão 01 25/07/2025 14:22
+# /fastapi_backend/app/routers/historia.py
+# v1.0 - 2025-07-30 01:54:15 - Corrige importações relativas e adiciona segurança.
+
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app import schemas
 from app.database import get_db
-from auth.security import get_current_staff_user
-from crud import historia as crud_historia
-from models import user as model_user
-from schemas import historia as schema_historia
+from app.crud import historia as crud_historia
+from app.crud import user as crud_user
 
-router = APIRouter(prefix="/historia", tags=["História"])
+router = APIRouter()
 
-@router.get("/", response_model=List[schema_historia.HistoriaItem])
-def read_historia_items(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
+@router.post("/", response_model=schemas.Historia, status_code=status.HTTP_201_CREATED)
+def create_historia_entry(
+    historia: schemas.HistoriaCreate, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(crud_user.get_current_active_user)
 ):
-    """Lista todos os itens da história. Acesso público."""
-    items = crud_historia.get_historia_items(db, skip=skip, limit=limit)
-    return items
+    """
+    Cria uma nova entrada na história. Requer autenticação de superusuário.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    return crud_historia.create_historia(db=db, historia=historia)
 
-@router.post("/", response_model=schema_historia.HistoriaItem, status_code=status.HTTP_201_CREATED)
-def create_historia_item(
-    item: schema_historia.HistoriaItemCreate,
-    db: Session = Depends(get_db),
-    current_user: model_user.User = Depends(get_current_staff_user)
-):
-    """Cria um novo item na história. Apenas para staff."""
-    return crud_historia.create_historia_item(db=db, item=item)
+@router.get("/", response_model=List[schemas.Historia])
+def read_historias(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """
+    Retorna todas as entradas da história.
+    """
+    historias = crud_historia.get_historias(db, skip=skip, limit=limit)
+    return historias
 
-@router.get("/{item_id}", response_model=schema_historia.HistoriaItem)
-def read_historia_item(
-    item_id: int,
-    db: Session = Depends(get_db)
-):
-    """Obtém um item específico da história pelo ID. Acesso público."""
-    db_item = crud_historia.get_historia_item(db, item_id=item_id)
-    if db_item is None:
-        raise HTTPException(status_code=404, detail="Item da história não encontrado.")
-    return db_item
+@router.get("/{historia_id}", response_model=schemas.Historia)
+def read_historia(historia_id: int, db: Session = Depends(get_db)):
+    """
+    Retorna uma entrada específica da história pelo ID.
+    """
+    db_historia = crud_historia.get_historia(db, historia_id=historia_id)
+    if db_historia is None:
+        raise HTTPException(status_code=404, detail="Historia entry not found")
+    return db_historia
 
-@router.put("/{item_id}", response_model=schema_historia.HistoriaItem)
-def update_historia_item(
-    item_id: int,
-    item_update: schema_historia.HistoriaItemUpdate,
-    db: Session = Depends(get_db),
-    current_user: model_user.User = Depends(get_current_staff_user)
+@router.put("/{historia_id}", response_model=schemas.Historia)
+def update_historia_entry(
+    historia_id: int, 
+    historia: schemas.HistoriaUpdate, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(crud_user.get_current_active_user)
 ):
-    """Atualiza um item da história. Apenas para staff."""
-    db_item = crud_historia.update_historia_item(db, item_id=item_id, item_update=item_update)
-    if db_item is None:
-        raise HTTPException(status_code=404, detail="Item da história não encontrado para atualização.")
-    return db_item
+    """
+    Atualiza uma entrada da história. Requer autenticação de superusuário.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    db_historia = crud_historia.get_historia(db, historia_id=historia_id)
+    if db_historia is None:
+        raise HTTPException(status_code=404, detail="Historia entry not found")
+        
+    return crud_historia.update_historia(db=db, historia_id=historia_id, historia_update=historia)
 
-@router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_historia_item(
-    item_id: int,
-    db: Session = Depends(get_db),
-    current_user: model_user.User = Depends(get_current_staff_user)
+@router.delete("/{historia_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_historia_entry(
+    historia_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(crud_user.get_current_active_user)
 ):
-    """Apaga um item da história. Apenas para staff."""
-    db_item = crud_historia.delete_historia_item(db, item_id=item_id)
-    if db_item is None:
-        raise HTTPException(status_code=404, detail="Item da história não encontrado para exclusão.")
-    return
+    """
+    Deleta uma entrada da história. Requer autenticação de superusuário.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+        
+    db_historia = crud_historia.get_historia(db, historia_id=historia_id)
+    if db_historia is None:
+        raise HTTPException(status_code=404, detail="Historia entry not found")
+        
+    crud_historia.delete_historia(db=db, historia_id=historia_id)
+    return {"ok": True}
