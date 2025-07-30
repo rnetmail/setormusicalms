@@ -1,33 +1,29 @@
 # fastapi_backend/Dockerfile
-# Versão 120 - Ordem de Instalação Corrigida
+# Versão 10 - 29/07/2025 05:25 - Define o PYTHONPATH e o comando de inicialização correto
 
+# Usa uma imagem base do Python 3.11
 FROM python:3.11-slim
 
+# Define o diretório de trabalho dentro do contêiner
 WORKDIR /app
 
-# 1. Copia o arquivo de dependências primeiro
+# Define a variável de ambiente PYTHONPATH para incluir o diretório de trabalho
+# Isso resolve problemas de importação, permitindo que módulos como 'auth' e 'crud' sejam encontrados
+ENV PYTHONPATH "${PYTHONPATH}:/app"
+
+# Copia o arquivo de dependências
 COPY requirements.txt .
 
-# 2. Instala as dependências do sistema e do Python (incluindo o próprio playwright)
-RUN apt-get update && \
-    apt-get install -y curl && \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    rm -rf /var/lib/apt/lists/*
+# Instala as dependências do Python
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-# 3. Agora que o 'playwright' está instalado via pip, instala as dependências de navegador
-RUN playwright install-deps
-
-# 4. Instala os binários dos navegadores do Playwright
-RUN playwright install
-
-# Copia o restante do código da aplicação
+# Copia todo o código do backend para o diretório de trabalho
 COPY . .
 
-# Cria o diretório de dados para o SQLite
-RUN mkdir -p /app/data
-
+# Expõe a porta 8000, que é a porta que o Uvicorn usará
 EXPOSE 8000
 
-# Comando para iniciar a API
+# Comando para iniciar o servidor Uvicorn
+# Ele aponta para a variável 'app' dentro do arquivo 'app/main.py'
+# --host 0.0.0.0 permite que o servidor seja acessível de fora do contêiner
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
