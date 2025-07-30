@@ -1,20 +1,27 @@
-# fastapi_backend/app/main.py
-# Versão 06 - 29/07/2025 05:05 - Estrutura a aplicação a partir deste ponto de entrada
+# /fastapi_backend/app/main.py
+# v1.1 - 2025-07-30 01:45:30 - Corrige caminho, importações, adiciona prefixo /api e CORS.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# CORREÇÃO: Importa os roteadores da subpasta 'routers'
-from .routers import auth, users, recados, agenda, historia, galeria, repertorio
+from app.database import engine, Base
+from app.routers import auth, users, recados, agenda, historia, galeria, repertorio
 
-app = FastAPI(title="Setor Musical MS API")
+# Cria as tabelas no banco de dados (se não existirem)
+# Base.metadata.create_all(bind=engine) # Descomente se precisar criar tabelas na inicialização
+
+app = FastAPI(
+    title="Setor Musical MS API",
+    description="API para o sistema de gerenciamento do Setor Musical.",
+    version="1.0.0"
+)
 
 # Configuração do CORS
 origins = [
     "http://localhost",
     "http://localhost:3000",
-    "http://setormusicalms.art.br",
-    "https://setormusicalms.art.br",
+    "http://localhost:8080",
+    # Adicione aqui o endereço do seu frontend em produção
 ]
 
 app.add_middleware(
@@ -25,20 +32,20 @@ app.add_middleware(
     allow_headers=["*"],
  )
 
-# Roteador principal da API com o prefixo /api
-api_router = APIRouter()
-api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
-api_router.include_router(users.router, prefix="/users", tags=["Users"])
-api_router.include_router(recados.router, prefix="/recados", tags=["Recados"])
-api_router.include_router(agenda.router, prefix="/agenda", tags=["Agenda"])
-api_router.include_router(historia.router, prefix="/historia", tags=["Historia"])
-api_router.include_router(galeria.router, prefix="/galeria", tags=["Galeria"])
-api_router.include_router(repertorio.router, prefix="/repertorio", tags=["Repertorio"])
+# Inclui os roteadores com o prefixo /api
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(users.router, prefix="/api/users", tags=["users"])
+app.include_router(recados.router, prefix="/api/recados", tags=["recados"])
+app.include_router(agenda.router, prefix="/api/agenda", tags=["agenda"])
+app.include_router(historia.router, prefix="/api/historia", tags=["historia"])
+app.include_router(galeria.router, prefix="/api/galeria", tags=["galeria"])
+app.include_router(repertorio.router, prefix="/api/repertorio", tags=["repertorio"])
 
-app.include_router(api_router, prefix="/api")
-
-@app.get("/health", tags=["Health Check"])
+@app.get("/api/health", tags=["Health Check"])
 def health_check():
-    """Verifica a saúde da aplicação, agora sem o prefixo /api."""
-    return {"status": "healthy"}
+    """Verifica a saúde da API."""
+    return {"status": "ok"}
 
+@app.get("/", tags=["Root"])
+def read_root():
+    return {"message": "Bem-vindo à API do Setor Musical MS"}
