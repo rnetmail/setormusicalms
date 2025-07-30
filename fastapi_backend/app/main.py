@@ -1,58 +1,42 @@
 # fastapi_backend/app/main.py
-# Versão 02 25/07/2025 17:35
-from fastapi import FastAPI, APIRouter
+# Versão 02 - 29/07/2025 04:35 - Adiciona o roteador da API com prefixo /api e habilita CORS
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.endpoints import auth, users, recados, agenda, historia, galeria, repertorio
 
-# CORREÇÃO: As importações foram alteradas de relativas ("..") para absolutas.
-try:
-    # Tenta importação relativa (quando executado como módulo)
-    from .database import engine, Base
-    from .config   import settings
-    from .routers  import auth, users, repertorio, agenda, recados, historia, galeria
-except ImportError:
-    # Fallback para importação absoluta (quando executado diretamente)
-    from database import engine, Base
-    from config   import settings
-    from routers  import auth, users, repertorio, agenda, recados, historia, galeria
+# Cria a instância da aplicação FastAPI
+app = FastAPI(title="Setor Musical MS API")
 
-# Cria todas as tabelas no banco de dados se não existirem.
-Base.metadata.create_all(bind=engine)
+# Configuração do CORS para permitir requisições do frontend
+# Isso é crucial para que o navegador não bloqueie as chamadas da API.
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://setormusicalms.art.br",
+    "https://setormusicalms.art.br",
+]
 
-app = FastAPI(
-    title="Setor Musical MS API",
-    description="API para gerenciamento do Setor Musical Mokiti Okada MS",
-    version="1.0.0"
-)
-
-# Configura o CORS (Cross-Origin Resource Sharing)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)
+ )
 
-# Cria um router principal para organizar todos os endpoints sob o prefixo /api
-api_router = APIRouter(prefix="/api")
+# Roteador principal da API
+# Inclui todos os outros roteadores de endpoints sob o prefixo /api
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(users.router, prefix="/api/users", tags=["users"])
+app.include_router(recados.router, prefix="/api/recados", tags=["recados"])
+app.include_router(agenda.router, prefix="/api/agenda", tags=["agenda"])
+app.include_router(historia.router, prefix="/api/historia", tags=["historia"])
+app.include_router(galeria.router, prefix="/api/galeria", tags=["galeria"])
+app.include_router(repertorio.router, prefix="/api/repertorio", tags=["repertorio"])
 
-# Inclui os routers de cada módulo na API principal
-api_router.include_router(auth.router)
-api_router.include_router(users.router)
-api_router.include_router(repertorio.router)
-api_router.include_router(agenda.router)
-api_router.include_router(recados.router)
-api_router.include_router(historia.router)
-api_router.include_router(galeria.router)
-
-@api_router.get("/health", tags=["Health Check"])
-def health_check():
-    """Endpoint de verificação de saúde para monitoramento."""
-    return {"status": "healthy", "message": "API está no ar e funcionando."}
-
-app.include_router(api_router)
-
-@app.get("/", tags=["Root"])
+# Endpoint de verificação de saúde da aplicação
+@app.get("/api/health", tags=["health"])
 def read_root():
-    """Endpoint raiz para uma verificação básica de que o serviço está online."""
-    return {"message": "Bem-vindo à API do Setor Musical MS"}
+    """Endpoint para verificar se a API está online."""
+    return {"status": "healthy"}
