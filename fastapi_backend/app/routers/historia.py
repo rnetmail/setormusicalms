@@ -1,10 +1,11 @@
 # /fastapi_backend/app/routers/historia.py
-# v1.0 - 2025-07-30 01:54:15 - Corrige importações relativas e adiciona segurança.
+# v1.1 - 2025-07-30 02:16:15 - Corrige importações para o padrão absoluto do projeto.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+# Correção: Importações absolutas a partir da raiz do pacote 'app'
 from app import schemas
 from app.database import get_db
 from app.crud import historia as crud_historia
