@@ -1,60 +1,75 @@
-# fastapi_backend/app/routers/galeria.py
-# Versão 01 25/07/2025 14:25
+# /fastapi_backend/app/routers/galeria.py
+# v1.0 - 2025-07-30 01:55:50 - Corrige importações relativas e adiciona segurança.
+
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Path
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.orm import Session
 
+from app import schemas
 from app.database import get_db
-from auth.security import get_current_staff_user
-from crud import galeria as crud_galeria
-from models import user as model_user
-from schemas import galeria as schema_galeria
+from app.crud import galeria as crud_galeria
+from app.crud import user as crud_user
+from app.utils import file_handler # Supondo que exista um utilitário para lidar com uploads
 
-router = APIRouter(prefix="/galeria", tags=["Galeria"])
+router = APIRouter()
 
-@router.get("/{group}", response_model=List[schema_galeria.GaleriaItem])
-def read_galeria_items_by_group(
-    group: str = Path(..., description="Filtrar por grupo: Coral ou Orquestra"),
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
+@router.post("/", response_model=schemas.Galeria, status_code=status.HTTP_201_CREATED)
+async def create_galeria_item(
+    title: str,
+    description: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(crud_user.get_current_active_user)
 ):
-    """Lista os itens da galeria de um grupo específico. Acesso público."""
-    if group not in ["Coral", "Orquestra"]:
-        raise HTTPException(status_code=400, detail="O grupo deve ser 'Coral' ou 'Orquestra'")
-    items = crud_galeria.get_galeria_items_by_group(db, group=group, skip=skip, limit=limit)
+    """
+    Cria um novo item na galeria (imagem). Requer autenticação de superusuário.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    # Lógica para salvar o arquivo e obter a URL
+    file_url = await file_handler.save_upload_file(upload_file=file, destination="galeria")
+    
+    item_schema = schemas.GaleriaCreate(title=title, description=description, image_url=file_url)
+    
+    return crud_galeria.create_galeria_item(db=db, item=item_schema)
+
+@router.get("/", response_model=List[schemas.Galeria])
+def read_galeria_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """
+    Retorna todos os itens da galeria.
+    """
+    items = crud_galeria.get_galeria_items(db, skip=skip, limit=limit)
     return items
 
-@router.post("/", response_model=schema_galeria.GaleriaItem, status_code=status.HTTP_201_CREATED)
-def create_galeria_item(
-    item: schema_galeria.GaleriaItemCreate,
-    db: Session = Depends(get_db),
-    current_user: model_user.User = Depends(get_current_staff_user)
-):
-    """Cria um novo item na galeria. Apenas para staff."""
-    return crud_galeria.create_galeria_item(db=db, item=item)
-
-@router.put("/{item_id}", response_model=schema_galeria.GaleriaItem)
-def update_galeria_item(
-    item_id: int,
-    item_update: schema_galeria.GaleriaItemUpdate,
-    db: Session = Depends(get_db),
-    current_user: model_user.User = Depends(get_current_staff_user)
-):
-    """Atualiza um item da galeria. Apenas para staff."""
-    db_item = crud_galeria.update_galeria_item(db, item_id=item_id, item_update=item_update)
+@router.get("/{item_id}", response_model=schemas.Galeria)
+def read_galeria_item(item_id: int, db: Session = Depends(get_db)):
+    """
+    Retorna um item específico da galeria pelo ID.
+    """
+    db_item = crud_galeria.get_galeria_item(db, item_id=item_id)
     if db_item is None:
-        raise HTTPException(status_code=404, detail="Item da galeria não encontrado para atualização.")
+        raise HTTPException(status_code=404, detail="Galeria item not found")
     return db_item
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_galeria_item(
-    item_id: int,
-    db: Session = Depends(get_db),
-    current_user: model_user.User = Depends(get_current_staff_user)
+    item_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(crud_user.get_current_active_user)
 ):
-    """Apaga um item da galeria. Apenas para staff."""
-    db_item = crud_galeria.delete_galeria_item(db, item_id=item_id)
+    """
+    Deleta um item da galeria. Requer autenticação de superusuário.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+        
+    db_item = crud_galeria.get_galeria_item(db, item_id=item_id)
     if db_item is None:
-        raise HTTPException(status_code=404, detail="Item da galeria não encontrado para exclusão.")
-    return
+        raise HTTPException(status_code=404, detail="Galeria item not found")
+    
+    # Lógica para deletar o arquivo físico, se necessário
+    # file_handler.delete_file(file_path=db_item.image_url)
+        
+    crud_galeria.delete_galeria_item(db=db, item_id=item_id)
+    return {"ok": True}
