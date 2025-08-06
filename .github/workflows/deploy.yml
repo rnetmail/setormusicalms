@@ -137,7 +137,7 @@ jobs:
             docker compose exec backend python /app/init_admin.py
 
             echo ">>> [7/8] Aguardando 15s para a aplicação estabilizar..."
-            sleep 15
+            sleep 60
 
             echo ">>> [8/8] Realizando teste de fumaça: Login na API..."
             # Simula um login e verifica se um token de acesso é retornado
@@ -151,7 +151,7 @@ jobs:
             else
               echo "❌ ERRO: Teste de fumaça falhou - Não foi possível fazer login."
               echo "--- LOGS DO BACKEND ---"
-              docker compose logs backend --tail=50
+              docker compose logs backend --tail=100
               exit 1
             fi
 
