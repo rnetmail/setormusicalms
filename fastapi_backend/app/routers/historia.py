@@ -1,23 +1,22 @@
 # /fastapi_backend/app/routers/historia.py
-# v1.1 - 2025-07-30 02:16:15 - Corrige importações para o padrão absoluto do projeto.
+# v2.0 - 2025-07-30 23:01:00 - Corrige importações para estrutura correta do projeto.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-# Correção: Importações absolutas a partir da raiz do pacote 'app'
-from app import schemas
-from app.database import get_db
-from app.crud import historia as crud_historia
-from app.crud import user as crud_user
+# Importações corretas baseadas na estrutura real do projeto
+from ...schemas import historia as historia_schemas, user as user_schemas
+from ..database import get_db
+from ...crud import historia as crud_historia, user as crud_user
 
 router = APIRouter()
 
-@router.post("/", response_model=schemas.Historia, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=historia_schemas.HistoriaItem, status_code=status.HTTP_201_CREATED)
 def create_historia_entry(
-    historia: schemas.HistoriaCreate, 
+    historia: historia_schemas.HistoriaItemCreate, 
     db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(crud_user.get_current_active_user)
+    current_user: user_schemas.User = Depends(crud_user.get_current_active_user)
 ):
     """
     Cria uma nova entrada na história. Requer autenticação de superusuário.
@@ -26,7 +25,7 @@ def create_historia_entry(
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return crud_historia.create_historia(db=db, historia=historia)
 
-@router.get("/", response_model=List[schemas.Historia])
+@router.get("/", response_model=List[historia_schemas.HistoriaItem])
 def read_historias(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """
     Retorna todas as entradas da história.
@@ -34,7 +33,7 @@ def read_historias(skip: int = 0, limit: int = 100, db: Session = Depends(get_db
     historias = crud_historia.get_historias(db, skip=skip, limit=limit)
     return historias
 
-@router.get("/{historia_id}", response_model=schemas.Historia)
+@router.get("/{historia_id}", response_model=historia_schemas.HistoriaItem)
 def read_historia(historia_id: int, db: Session = Depends(get_db)):
     """
     Retorna uma entrada específica da história pelo ID.
@@ -44,12 +43,12 @@ def read_historia(historia_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Historia entry not found")
     return db_historia
 
-@router.put("/{historia_id}", response_model=schemas.Historia)
+@router.put("/{historia_id}", response_model=historia_schemas.HistoriaItem)
 def update_historia_entry(
     historia_id: int, 
-    historia: schemas.HistoriaUpdate, 
+    historia: historia_schemas.HistoriaItemUpdate, 
     db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(crud_user.get_current_active_user)
+    current_user: user_schemas.User = Depends(crud_user.get_current_active_user)
 ):
     """
     Atualiza uma entrada da história. Requer autenticação de superusuário.
@@ -67,7 +66,7 @@ def update_historia_entry(
 def delete_historia_entry(
     historia_id: int, 
     db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(crud_user.get_current_active_user)
+    current_user: user_schemas.User = Depends(crud_user.get_current_active_user)
 ):
     """
     Deleta uma entrada da história. Requer autenticação de superusuário.
@@ -81,3 +80,4 @@ def delete_historia_entry(
         
     crud_historia.delete_historia(db=db, historia_id=historia_id)
     return {"ok": True}
+

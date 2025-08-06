@@ -1,40 +1,47 @@
-# docker-compose.yml
-# Versão 11 - 29/07/2025 05:30 - Alinha os contextos de build e remove comandos sobrepostos
+# /docker-compose.yml
+# v3.0 - 2025-07-30 23:05:00 - Corrige configuração para SQLite e adiciona health checks.
+
+version: '3.8'
 
 services:
   backend:
     build:
       context: ./fastapi_backend
+      dockerfile: Dockerfile
     container_name: setormusicalms-backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
+      - ./fastapi_backend:/app
       - sqlite_data:/app/data
+    ports:
+      - "8000:8000"
     environment:
+      - SECRET_KEY=${SECRET_KEY:-uma-chave-secreta-forte-e-dificil-de-adivinhar}
+      - ALGORITHM=${ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
       - DATABASE_URL=sqlite:///data/setormusical.db
-    expose:
-      - "8000"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
     container_name: setormusicalms-frontend
-    expose:
-      - "80"
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  nginx-proxy:
-    build:
-      context: .
-      dockerfile: nginx-proxy.Dockerfile # Usando um Dockerfile específico para o proxy
-    container_name: setormusicalms-nginx-proxy
     ports:
-      - "8001:80"
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
     depends_on:
-      - frontend
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   sqlite_data:
+
