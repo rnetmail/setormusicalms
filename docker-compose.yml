@@ -1,43 +1,56 @@
-# /docker-compose.yml
-# v4.0 - 2025-08-06 17:40:00 - Corrige health check e simplifica dependências.
+# /docker-compose.yml - Versão Final com Arquitetura de Proxy Interno
+version: '3.8'
 
 services:
   backend:
     build:
       context: ./fastapi_backend
-      dockerfile: Dockerfile
     container_name: setormusicalms-backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
-      - ./fastapi_backend:/app
       - sqlite_data:/app/data
-    ports:
-      - "8000:8000"
     environment:
-      - SECRET_KEY=${SECRET_KEY:-uma-chave-secreta-forte-e-dificil-de-adivinhar}
-      - ALGORITHM=${ALGORITHM:-HS256}
-      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
       - DATABASE_URL=sqlite:///data/setormusical.db
     restart: unless-stopped
+    expose:
+      - "8000" # Exposto apenas para a rede interna do Docker
+    networks:
+      - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 30s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 20s
       timeout: 10s
-      retries: 3
+      retries: 5
       start_period: 60s
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
     container_name: setormusicalms-frontend
+    restart: unless-stopped
+    expose:
+      - "3000" # O servidor Node/Vite roda na porta 3000 internamente
+    networks:
+      - app-network
+
+  nginx-proxy:
+    image: nginx:stable-alpine
+    container_name: setormusicalms-nginx-proxy
     ports:
-      - "3000:3000"
+      - "8001:80" # Ponto de entrada da VPS (porta 8001 ) para a porta 80 do proxy
     volumes:
-      - ./frontend/src:/app/src
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf
     depends_on:
+      - frontend
       - backend
     restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   sqlite_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
