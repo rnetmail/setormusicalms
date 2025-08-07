@@ -25,11 +25,11 @@ jobs:
       - name: Aguardar e validar saúde da API
         run: |
           echo "⏳ Aguardando backend ficar saudável..."
-          for i in {1..18}; do
+          for i in {1..10}; do
             if docker compose ps | grep 'setormusicalms-backend' | grep -q '(healthy)'; then
               echo "✅ Backend está saudável!"
               exit 0
-            fi; sleep 5
+            fi; sleep 15
           done
           echo "❌ ERRO: Backend não ficou saudável em 90 segundos."; docker compose logs backend; exit 1
       - name: Encerrar containers após testes
