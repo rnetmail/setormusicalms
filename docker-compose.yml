@@ -1,7 +1,5 @@
 # /docker-compose.yml
-# v3.0 - 2025-07-30 23:05:00 - Corrige configuração para SQLite e adiciona health checks.
-
-version: '3.8'
+# v4.0 - 2025-08-06 17:40:00 - Corrige health check e simplifica dependências.
 
 services:
   backend:
@@ -22,11 +20,11 @@ services:
       - DATABASE_URL=sqlite:///data/setormusical.db
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 40s
+      retries: 3
+      start_period: 60s
 
   frontend:
     build:
@@ -38,10 +36,8 @@ services:
     volumes:
       - ./frontend/src:/app/src
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     restart: unless-stopped
 
 volumes:
   sqlite_data:
-
