@@ -1,16 +1,17 @@
 # /fastapi_backend/app/routers/historia.py
-# v2.0 - 2025-07-30 23:01:00 - Corrige importações para estrutura correta do projeto.
+# v2.1 - 2025-08-07 - Corrige importações para absolutas.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-# Importações corretas baseadas na estrutura real do projeto
-from ...schemas import historia as historia_schemas, user as user_schemas
-from ..database import get_db
-from ...crud import historia as crud_historia, user as crud_user
+# --- INÍCIO DA CORREÇÃO ---
+from app.schemas import historia as historia_schemas, user as user_schemas
+from app.database import get_db
+from app.crud import historia as crud_historia, user as crud_user
+# --- FIM DA CORREÇÃO ---
 
-router = APIRouter()
+router = APIRouter(prefix="/api/historia", tags=["Historia"])
 
 @router.post("/", response_model=historia_schemas.HistoriaItem, status_code=status.HTTP_201_CREATED)
 def create_historia_entry(
@@ -80,4 +81,3 @@ def delete_historia_entry(
         
     crud_historia.delete_historia(db=db, historia_id=historia_id)
     return {"ok": True}
-
