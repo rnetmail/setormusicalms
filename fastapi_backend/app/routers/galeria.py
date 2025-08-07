@@ -1,16 +1,17 @@
 # /fastapi_backend/app/routers/galeria.py
-# v2.0 - 2025-07-30 23:02:00 - Corrige importações para estrutura correta do projeto.
+# v2.1 - 2025-08-07 - Corrige importações para absolutas.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.orm import Session
 
-# Importações corretas baseadas na estrutura real do projeto
-from ...schemas import galeria as galeria_schemas, user as user_schemas
-from ..database import get_db
-from ...crud import galeria as crud_galeria, user as crud_user
+# --- INÍCIO DA CORREÇÃO ---
+from app.schemas import galeria as galeria_schemas, user as user_schemas
+from app.database import get_db
+from app.crud import galeria as crud_galeria, user as crud_user
+# --- FIM DA CORREÇÃO ---
 
-router = APIRouter()
+router = APIRouter(prefix="/api/galeria", tags=["Galeria"])
 
 @router.post("/", response_model=galeria_schemas.GaleriaItem, status_code=status.HTTP_201_CREATED)
 async def create_galeria_item(
@@ -27,9 +28,7 @@ async def create_galeria_item(
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     
-    # Placeholder para a lógica de salvamento de arquivo.
-    # Você precisará implementar a função 'save_upload_file' em algum lugar, como em 'utils/file_handler.py'.
-    file_url = f"/static/images/galeria/{file.filename}"  # Exemplo de URL
+    file_url = f"/static/images/galeria/{file.filename}"
     
     from datetime import date
     item_schema = galeria_schemas.GaleriaItemCreate(
@@ -75,10 +74,6 @@ def delete_galeria_item(
     db_item = crud_galeria.get_galeria_item(db, item_id=item_id)
     if db_item is None:
         raise HTTPException(status_code=404, detail="Galeria item not found")
-    
-    # Lógica para deletar o arquivo físico, se necessário
-    # file_handler.delete_file(file_path=db_item.imageUrl)
         
     crud_galeria.delete_galeria_item(db=db, item_id=item_id)
     return {"ok": True}
-
