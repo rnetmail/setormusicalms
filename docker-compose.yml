@@ -1,18 +1,12 @@
-# /docker-compose.yml - Adicionando PYTHONPATH
-version: '3.8'
-
+# /docker-compose.yml - Versão Final Simplificada
+# version: '3.8'
 services:
   backend:
     build:
       context: ./fastapi_backend
     container_name: setormusicalms-backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - sqlite_data:/app/data
-    environment:
-      # LINHA ESSENCIAL PARA AS IMPORTAÇÕES FUNCIONAREM
-      - PYTHONPATH=/app 
-      - DATABASE_URL=sqlite:///data/setormusical.db
     restart: unless-stopped
     expose:
       - "8000"
@@ -24,8 +18,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-
-  # ... (resto do arquivo sem alterações ) ...
   frontend:
     build:
       context: ./frontend
@@ -35,7 +27,6 @@ services:
       - "80"
     networks:
       - app-network
-
   nginx-proxy:
     image: nginx:stable-alpine
     container_name: setormusicalms-nginx-proxy
@@ -49,11 +40,9 @@ services:
     restart: unless-stopped
     networks:
       - app-network
-
 volumes:
   sqlite_data:
     driver: local
-
 networks:
   app-network:
     driver: bridge
