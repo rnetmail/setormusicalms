@@ -1,16 +1,18 @@
 # /fastapi_backend/app/routers/agenda.py
-# v2.0 - 2025-07-30 23:00:00 - Corrige importações para estrutura correta do projeto.
+# v2.1 - 2025-08-07 - Corrige importações para absolutas.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-# Importações corretas baseadas na estrutura real do projeto
-from ...schemas import agenda as agenda_schemas, user as user_schemas
-from ..database import get_db
-from ...crud import agenda as crud_agenda, user as crud_user
+# --- INÍCIO DA CORREÇÃO ---
+# Importações absolutas a partir da raiz do projeto 'app'
+from app.schemas import agenda as agenda_schemas, user as user_schemas
+from app.database import get_db
+from app.crud import agenda as crud_agenda, user as crud_user
+# --- FIM DA CORREÇÃO ---
 
-router = APIRouter()
+router = APIRouter(prefix="/api/agenda", tags=["Agenda"])
 
 @router.post("/", response_model=agenda_schemas.AgendaItem, status_code=status.HTTP_201_CREATED)
 def create_agenda_item(
@@ -80,4 +82,3 @@ def delete_agenda_item(
         
     crud_agenda.delete_agenda_item(db=db, item_id=item_id)
     return {"ok": True}
-
