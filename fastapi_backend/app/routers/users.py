@@ -1,16 +1,17 @@
 # /fastapi_backend/app/routers/users.py
-# v2.0 - 2025-07-30 22:58:00 - Corrige importações para estrutura correta do projeto.
+# v2.1 - 2025-08-07 - Corrige importações para absolutas.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-# Importações corretas baseadas na estrutura real do projeto
-from ...schemas import user as user_schemas
-from ..database import get_db
-from ...crud import user as crud_user
+# --- INÍCIO DA CORREÇÃO ---
+from app.schemas import user as user_schemas
+from app.database import get_db
+from app.crud import user as crud_user
+# --- FIM DA CORREÇÃO ---
 
-router = APIRouter()
+router = APIRouter(prefix="/api/users", tags=["Users"])
 
 @router.post("/", response_model=user_schemas.User, status_code=status.HTTP_201_CREATED)
 def create_user(user: user_schemas.UserCreate, db: Session = Depends(get_db)):
@@ -39,4 +40,3 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
-
