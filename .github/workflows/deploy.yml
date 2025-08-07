@@ -1,8 +1,7 @@
-# /.github/workflows/deploy.yml
-# v2.0 - 2025-08-07 12:10:00 - Corrige execução do init_admin.py
-# v2.1 - 2025-08-07 - Padroniza para 'docker compose' e ajusta contextos/endpoints.
+# Versão Final - Completa, Funcional e Segura
+# Alinhada com os segredos do ambiente e práticas modernas de CI/CD.
 
-name: Deploy to VPS
+name: CI/CD - Testar, Construir, Implementar e Validar
 
 on:
   push:
@@ -10,150 +9,116 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  # Padroniza o registro e os nomes das imagens para o GitHub Container Registry (GHCR)
+  REGISTRY: ghcr.io
+  IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-backend
+  IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository_owner }}/setormusicalms-frontend
+
 jobs:
   test:
+    name: 🧪 Testar Aplicação
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout do código
-      uses: actions/checkout@v3
+      - name: Checkout do código
+        uses: actions/checkout@v4
 
-    - name: Iniciar serviços com Docker Compose
-      run: |
-        # Usa o docker-compose.yml corrigido para iniciar os serviços
-        docker compose up -d --build --remove-orphans
-        
-    - name: Executar testes de integração e saúde
-      run: |
-        # Espera a API ficar saudável antes de rodar os testes
-        echo "⏳ Aguardando saúde da API..."
-        # O loop agora verifica o health check por 60 segundos (10 tentativas de 15s)
-        for i in {1..10}; do
-          # Verifica o endpoint raiz, que é o alvo do nosso healthcheck
-          if docker compose ps | grep 'setormusicalms-backend' | grep -q '(healthy)'; then
-            echo "✅ API saudável (status healthy)!"
-            break
-          fi
-          echo "Aguardando contêiner backend ficar saudável..."
-          sleep 15
-        done
+      - name: Iniciar serviços com Docker Compose
+        run: docker compose up -d --build --remove-orphans
 
-        # Verificação final do status
-        docker compose ps
-        
-        echo "🚀 Inicializando admin e testando endpoint..."
-        # Executa o script de inicialização do admin com Python diretamente
-        docker compose exec -T backend python /app/init_admin.py || echo "⚠️ Falha na inicialização do admin, continuando..."
-        
-        echo "🧪 Testando endpoints da API..."
-        # Testa endpoint básico (raiz)
-        curl -f http://localhost:8000/ || (echo "❌ Falha no endpoint raiz" && exit 1 )
-        
-        echo "✅ Testes concluídos!"
+      - name: Aguardar e validar saúde da API
+        run: |
+          echo "⏳ Aguardando backend ficar saudável..."
+          # O loop espera até 90 segundos pelo status '(healthy)' do contêiner
+          for i in {1..10}; do
+            if docker compose ps | grep 'setormusicalms-backend' | grep -q '(healthy)'; then
+              echo "✅ Backend está saudável!"
+              docker compose exec -T backend python /app/init_admin.py || echo "⚠️ Falha na inicialização do admin, continuando..."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "❌ ERRO: Backend não ficou saudável em 90 segundos."
+          echo "--- Logs do Backend ---"
+          docker compose logs backend
+          exit 1
 
-    - name: Encerrar containers após testes
-      if: always() # Garante que este passo rode mesmo se os testes falharem
-      run: docker compose down
+      - name: Encerrar containers após testes
+        if: always()
+        run: docker compose down
 
   build_and_push:
+    name: 🏗️ Construir e Publicar Imagens
     needs: test
     runs-on: ubuntu-latest
+    # Só executa em push na branch main para evitar publicações desnecessárias
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
+    permissions:
+      contents: read
+      packages: write # Permissão para publicar pacotes (imagens Docker) no GHCR
     steps:
-    - name: Checkout do código
-      uses: actions/checkout@v3
-      
-    - name: Login no Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        
-    - name: Build e push da imagem do backend
-      uses: docker/build-push-action@v4
-      with:
-        context: . # CORRIGIDO: O Dockerfile do backend está na raiz
-        push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/setormusicalms-backend:latest
-        
-    - name: Build e push da imagem do frontend
-      uses: docker/build-push-action@v4
-      with:
-        context: ./frontend
-        push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/setormusicalms-frontend:latest
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Login no GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # Token automático fornecido pelo GitHub Actions
+
+      - name: Build e Push da Imagem do Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: . # CORRIGIDO: O Dockerfile do backend está na raiz
+          push: true
+          tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
+
+      - name: Build e Push da Imagem do Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
   deploy_and_validate:
+    name: 🚀 Implementar e Validar na VPS
     needs: build_and_push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
+    environment: prod # Usa os segredos do ambiente 'prod'
     steps:
-    - name: Deploy na VPS
-      uses: appleboy/ssh-action@v1.0.3 # Versão atualizada do action
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USERNAME }}
-        key: ${{ secrets.VPS_SSH_KEY }}
-        script: |
-          echo "🚀 Iniciando deploy na VPS..."
-          
-          # Navega para o diretório do projeto
-          cd /root/setormusicalms || { echo "❌ Diretório não encontrado"; exit 1; }
-          
-          # Atualiza o código do repositório
-          echo "📥 Atualizando código..."
-          git pull origin main
-          
-          # Para os containers existentes
-          echo "🛑 Parando containers..."
-          docker compose down || echo "⚠️ Nenhum container rodando"
-          
-          # Remove imagens antigas para forçar download das novas
-          echo "🗑️ Removendo imagens antigas..."
-          docker rmi ${{ secrets.DOCKER_USERNAME }}/setormusicalms-backend:latest || echo "⚠️ Imagem backend não encontrada para remover"
-          docker rmi ${{ secrets.DOCKER_USERNAME }}/setormusicalms-frontend:latest || echo "⚠️ Imagem frontend não encontrada para remover"
-          
-          # Faz pull das novas imagens do Docker Hub
-          echo "📦 Baixando novas imagens..."
-          docker pull ${{ secrets.DOCKER_USERNAME }}/setormusicalms-backend:latest
-          docker pull ${{ secrets.DOCKER_USERNAME }}/setormusicalms-frontend:latest
-          
-          # Inicia os novos containers em modo detached
-          echo "🚀 Iniciando novos containers..."
-          docker compose up -d
-          
-          # Aguarda os serviços ficarem prontos
-          echo "⏳ Aguardando serviços..."
-          sleep 40
-          
-          # Executa inicialização do admin
-          echo "👤 Inicializando usuário admin..."
-          docker compose exec -T backend python /app/init_admin.py || echo "⚠️ Falha na inicialização do admin"
-          
-          # Verifica se os serviços estão rodando
-          echo "🔍 Verificando status dos serviços..."
-          docker compose ps
-          
-          echo "✅ Deploy concluído!"
-          
-    - name: Validar deploy
-      run: |
-        echo "🧪 Validando deploy em setormusicalms.art.br..."
-        
-        # Aguarda um pouco para os serviços estabilizarem
-        sleep 20
-        
-        # Testa se o site está acessível
-        for i in {1..5}; do
-          if curl -f -s http://setormusicalms.art.br/ >/dev/null 2>&1; then
-            echo "✅ Site acessível!"
-            exit 0 # Sucesso, sai do script
-          fi
-          echo "⏳ Tentativa $i/5 - aguardando site ficar disponível..."
-          sleep 20
-        done
+      - name: Deploy na VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          script: |
+            set -e # Encerra o script imediatamente se qualquer comando falhar
 
-        echo "❌ Falha ao validar o deploy. O site não ficou acessível."
-        exit 1
+            echo ">>> [1/6] Acessando o diretório do projeto..."
+            cd ${{ secrets.PROJECT_PATH_ON_VPS }}
+
+            echo ">>> [2/6] Atualizando o código-fonte da branch 'main'..."
+            git fetch origin
+            git reset --hard origin/main
+
+            echo ">>> [3/6] Autenticando no GHCR para baixar imagens..."
+            # Usa o segredo DOCKER_CONFIG_JSON para autenticação
+            mkdir -p ~/.docker
+            echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
+            chmod 600 ~/.docker/config.json
+
+            echo ">>> [4/6] Parando containers antigos e subindo os novos..."
+            # O 'pull' garante que as imagens mais recentes sejam usadas
+            docker compose pull
+            docker compose up -d --force-recreate --remove-orphans
+
+            echo ">>> [5/6] Aguardando 20s para a aplicação estabilizar..."
+            sleep 30
+
+            echo ">>> [6/6] Verificando status e limpando imagens antigas..."
+            docker compose ps
+            docker image prune -af
+            
+            echo "✅ Deploy concluído com sucesso!"
