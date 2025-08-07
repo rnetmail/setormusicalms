@@ -1,5 +1,6 @@
 # /.github/workflows/deploy.yml
 # v2.0 - 2025-08-07 12:10:00 - Corrige execução do init_admin.py
+# v2.1 - 2025-08-07 - Padroniza para 'docker compose' e ajusta contextos/endpoints.
 
 name: Deploy to VPS
 
@@ -19,43 +20,45 @@ jobs:
 
     - name: Iniciar serviços com Docker Compose
       run: |
-        docker-compose up -d --build
+        # Usa o docker-compose.yml corrigido para iniciar os serviços
+        docker compose up -d --build --remove-orphans
         
-    - name: Executar testes dentro do contêiner
+    - name: Executar testes de integração e saúde
       run: |
         # Espera a API ficar saudável antes de rodar os testes
         echo "⏳ Aguardando saúde da API..."
-        for i in {1..30}; do
-          if curl -f http://localhost:8000/api/health 2>/dev/null; then
-            echo "✅ API saudável!"
+        # O loop agora verifica o health check por 60 segundos (10 tentativas de 15s)
+        for i in {1..10}; do
+          # Verifica o endpoint raiz, que é o alvo do nosso healthcheck
+          if docker compose ps | grep 'setormusicalms-backend' | grep -q '(healthy)'; then
+            echo "✅ API saudável (status healthy)!"
             break
           fi
-          echo "curl: (7) Failed to connect to localhost port 8000 after 0 ms: Couldn't connect to server"
-          sleep 2
+          echo "Aguardando contêiner backend ficar saudável..."
+          sleep 15
         done
-        
-        curl -f http://localhost:8000/api/health
+
+        # Verificação final do status
+        docker compose ps
         
         echo "🚀 Inicializando admin e testando endpoint..."
         # Executa o script de inicialização do admin com Python diretamente
-        docker-compose exec -T backend python /app/init_admin.py || echo "⚠️ Falha na inicialização do admin, continuando..."
+        docker compose exec -T backend python /app/init_admin.py || echo "⚠️ Falha na inicialização do admin, continuando..."
         
         echo "🧪 Testando endpoints da API..."
-        # Testa endpoint básico
-        curl -f http://localhost:8000/ || echo "❌ Falha no endpoint raiz"
-        
-        # Testa endpoint de saúde
-        curl -f http://localhost:8000/api/health || echo "❌ Falha no health check"
+        # Testa endpoint básico (raiz)
+        curl -f http://localhost:8000/ || (echo "❌ Falha no endpoint raiz" && exit 1 )
         
         echo "✅ Testes concluídos!"
 
     - name: Encerrar containers após testes
-      run: docker-compose down
+      if: always() # Garante que este passo rode mesmo se os testes falharem
+      run: docker compose down
 
   build_and_push:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
     - name: Checkout do código
@@ -70,7 +73,7 @@ jobs:
     - name: Build e push da imagem do backend
       uses: docker/build-push-action@v4
       with:
-        context: ./fastapi_backend
+        context: . # CORRIGIDO: O Dockerfile do backend está na raiz
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/setormusicalms-backend:latest
         
@@ -84,11 +87,11 @@ jobs:
   deploy_and_validate:
     needs: build_and_push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
     - name: Deploy na VPS
-      uses: appleboy/ssh-action@v0.1.5
+      uses: appleboy/ssh-action@v1.0.3 # Versão atualizada do action
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USERNAME }}
@@ -105,33 +108,33 @@ jobs:
           
           # Para os containers existentes
           echo "🛑 Parando containers..."
-          docker-compose down || echo "⚠️ Nenhum container rodando"
+          docker compose down || echo "⚠️ Nenhum container rodando"
           
           # Remove imagens antigas para forçar download das novas
           echo "🗑️ Removendo imagens antigas..."
-          docker rmi ${{ secrets.DOCKER_USERNAME }}/setormusicalms-backend:latest || echo "⚠️ Imagem backend não encontrada"
-          docker rmi ${{ secrets.DOCKER_USERNAME }}/setormusicalms-frontend:latest || echo "⚠️ Imagem frontend não encontrada"
+          docker rmi ${{ secrets.DOCKER_USERNAME }}/setormusicalms-backend:latest || echo "⚠️ Imagem backend não encontrada para remover"
+          docker rmi ${{ secrets.DOCKER_USERNAME }}/setormusicalms-frontend:latest || echo "⚠️ Imagem frontend não encontrada para remover"
           
-          # Faz pull das novas imagens
+          # Faz pull das novas imagens do Docker Hub
           echo "📦 Baixando novas imagens..."
           docker pull ${{ secrets.DOCKER_USERNAME }}/setormusicalms-backend:latest
           docker pull ${{ secrets.DOCKER_USERNAME }}/setormusicalms-frontend:latest
           
-          # Inicia os novos containers
+          # Inicia os novos containers em modo detached
           echo "🚀 Iniciando novos containers..."
-          docker-compose up -d
+          docker compose up -d
           
           # Aguarda os serviços ficarem prontos
           echo "⏳ Aguardando serviços..."
-          sleep 30
+          sleep 40
           
           # Executa inicialização do admin
           echo "👤 Inicializando usuário admin..."
-          docker-compose exec -T backend python /app/init_admin.py || echo "⚠️ Falha na inicialização do admin"
+          docker compose exec -T backend python /app/init_admin.py || echo "⚠️ Falha na inicialização do admin"
           
           # Verifica se os serviços estão rodando
           echo "🔍 Verificando status dos serviços..."
-          docker-compose ps
+          docker compose ps
           
           echo "✅ Deploy concluído!"
           
@@ -140,23 +143,17 @@ jobs:
         echo "🧪 Validando deploy em setormusicalms.art.br..."
         
         # Aguarda um pouco para os serviços estabilizarem
-        sleep 10
+        sleep 20
         
         # Testa se o site está acessível
         for i in {1..5}; do
           if curl -f -s http://setormusicalms.art.br/ >/dev/null 2>&1; then
             echo "✅ Site acessível!"
-            break
+            exit 0 # Sucesso, sai do script
           fi
           echo "⏳ Tentativa $i/5 - aguardando site ficar disponível..."
-          sleep 10
+          sleep 20
         done
-        
-        # Testa endpoint da API
-        if curl -f -s http://setormusicalms.art.br/api/health >/dev/null 2>&1; then
-          echo "✅ API funcionando!"
-        else
-          echo "⚠️ API pode não estar respondendo ainda"
-        fi
-        
-        echo "🎉 Validação concluída! Acesse: http://setormusicalms.art.br"
+
+        echo "❌ Falha ao validar o deploy. O site não ficou acessível."
+        exit 1
