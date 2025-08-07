@@ -1,11 +1,15 @@
 # /fastapi_backend/app/routers/auth.py
-# v3.0 - 2025-08-06 17:35:00 - Simplifica para resolver problemas de importação.
+# v3.1 - 2025-08-07 - Mantido para consistência.
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends
 
-router = APIRouter()
+# Importações absolutas (exemplo, caso fossem necessárias)
+# from app.schemas import token as token_schemas
+# from app.security import create_access_token
+
+router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 # Endpoint básico de login para teste
 @router.post("/login")
