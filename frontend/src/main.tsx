@@ -1,43 +1,18 @@
 // frontend/src/main.tsx
 // Versão 12 - 29/07/2025 05:35 - Configura o ponto de entrada da aplicação React
+// /frontend/src/main.tsx
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
-import { AuthProvider } from './context/AuthContext';
-import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 
-// Cria um tema básico para o Material-UI
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2', // Um azul padrão
-    },
-    secondary: {
-      main: '#dc004e', // Um rosa padrão
-    },
-  },
-});
+// CORREÇÃO: Garante que o caminho relativo e a extensão do arquivo estejam corretos.
+import App from './App.tsx'; 
 
-// Busca o elemento root no HTML
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Elemento 'root' não encontrado no DOM.");
-}
+import './index.css'; // Importa o CSS global
 
-const root = ReactDOM.createRoot(rootElement);
-
-// Renderiza a aplicação
-root.render(
+// Renderiza a aplicação no elemento 'root' do seu index.html
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline /> {/* Normaliza o CSS entre navegadores */}
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProvider>
-  </React.StrictMode>
+    <App />
+  </React.StrictMode>,
 );
