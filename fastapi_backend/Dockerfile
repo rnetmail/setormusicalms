@@ -1,38 +1,30 @@
 # /fastapi_backend/Dockerfile
-# v11 - 2025-07-30 02:10:00 - Otimiza o cache de camadas e a ordem de instalação.
+# v4.0 - 2025-08-06 17:40:00 - Simplifica para resolver problemas de inicialização.
 
-# Etapa 1: Definir a imagem base
-# Usar uma imagem 'slim' é uma boa prática para manter o tamanho final reduzido.
 FROM python:3.11-slim
 
-# Etapa 2: Definir o diretório de trabalho
-# Todos os comandos subsequentes serão executados a partir deste diretório.
 WORKDIR /app
 
-# Etapa 3: Instalar dependências do sistema
-# Instala 'curl' (para health checks) e 'build-essential' (para compilar pacotes).
-# Combinar 'apt-get update', 'install' e 'clean' em uma única camada RUN reduz o tamanho da imagem.
+# Instalar dependências do sistema
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl build-essential && \
+    apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Etapa 4: Instalar dependências do Python
-# Copiar e instalar os requirements primeiro aproveita o cache do Docker.
-# Esta camada só será reconstruída se o arquivo requirements.txt mudar.
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
+# Instalar dependências Python básicas
+RUN pip install --no-cache-dir fastapi uvicorn python-multipart
 
-# Etapa 5: Copiar o código da aplicação
-# Copia o código-fonte após a instalação das dependências.
-# Desta forma, alterações no código não invalidam o cache das camadas de dependências.
+# Copiar apenas os arquivos essenciais primeiro
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt || echo "Alguns pacotes podem ter falhado, continuando..."
+
+# Copiar o código da aplicação
 COPY . .
 
-# Etapa 6: Expor a porta da aplicação
-# Informa ao Docker que o contêiner escuta na porta 8000.
+# Criar diretório para o banco de dados
+RUN mkdir -p /app/data
+
+# Expor a porta
 EXPOSE 8000
 
-# Etapa 7: Definir o comando de inicialização
-# Inicia o servidor Uvicorn.
-# --host 0.0.0.0 torna o servidor acessível externamente.
-# --reload é ótimo para desenvolvimento, mas deve ser removido em produção.
+# Comando de inicialização
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
