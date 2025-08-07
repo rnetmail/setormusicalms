@@ -1,13 +1,17 @@
 # frontend/Dockerfile - Versão Final para servir arquivos estáticos (sem build)
+# Estágio 1: Build da aplicação Vue.js
+FROM node:20-alpine as builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
 
-# Usa uma imagem Nginx leve
+# Estágio 2: Servir a aplicação com Nginx
 FROM nginx:stable-alpine
-
-# Copia TODOS os arquivos do seu projeto frontend para a pasta que o Nginx serve
-# Isso inclui index.html, index.tsx, pages/, components/, etc.
-COPY . /usr/share/nginx/html
-
-# Copia a configuração do Nginx para lidar com o roteamento do React (SPA)
+# Copia os arquivos buildados do estágio anterior
+COPY --from=builder /app/dist /usr/share/nginx/html
+# Copia a configuração customizada do Nginx
 COPY nginx-frontend.conf /etc/nginx/conf.d/default.conf
-
 EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
