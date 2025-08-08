@@ -1,16 +1,15 @@
 # /fastapi_backend/main.py
-# v4.0 - 2025-08-08 - Final, com estrutura simplificada e importações absolutas.
+# v5.0 - 2025-08-08 - Final, com estrutura simplificada e importações diretas.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# --- INÍCIO DA CORREÇÃO ---
-# Importa os módulos diretamente, pois agora estão na mesma raiz.
+# --- CORREÇÃO ---
+# Importa os módulos e o objeto Base diretamente.
 import database
 from routers import auth, users, recados, agenda, historia, galeria, repertorio
-# --- FIM DA CORREÇÃO ---
 
-# Cria as tabelas no banco de dados (se não existirem) ao iniciar a aplicação
+# Cria as tabelas no banco de dados ao iniciar a aplicação.
 database.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(
@@ -23,8 +22,8 @@ app = FastAPI(
 origins = [
     "http://localhost",
     "http://localhost:3000",
-    "http://localhost:8001", # Adicionado para o proxy local
-    "https://setormusicalms.art.br", # Domínio de produção
+    "http://localhost:8001",
+    "https://setormusicalms.art.br",
     "http://setormusicalms.art.br",
 ]
 
