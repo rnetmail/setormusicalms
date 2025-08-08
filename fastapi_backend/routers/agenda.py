@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 
 # --- INÍCIO DA CORREÇÃO ---
 # Importações absolutas a partir da raiz do projeto 'app'
-from app.schemas import agenda as agenda_schemas, user as user_schemas
-from app.database import get_db
-from app.crud import agenda as crud_agenda, user as crud_user
+from schemas import agenda as agenda_schemas, user as user_schemas
+from database import get_db
+from crud import agenda as crud_agenda, user as crud_user
 # --- FIM DA CORREÇÃO ---
 
 router = APIRouter(prefix="/api/agenda", tags=["Agenda"])
