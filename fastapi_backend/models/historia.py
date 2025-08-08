@@ -1,7 +1,7 @@
 # fastapi_backend/models/historia.py
 # Versão 01 25/07/2025 13:50
 from sqlalchemy import Column, Integer, String, Text
-from app.database import Base
+from database import Base
 
 class HistoriaItem(Base):
     """
