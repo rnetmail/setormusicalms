@@ -6,7 +6,7 @@ from typing import Optional
 from jose import JWError, jwt
 
 from .hashing import verify_password
-from ..app.config import settings
+from .config import settings
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
