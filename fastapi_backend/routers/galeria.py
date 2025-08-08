@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.orm import Session
 
 # --- INÍCIO DA CORREÇÃO ---
-from app.schemas import galeria as galeria_schemas, user as user_schemas
-from app.database import get_db
-from app.crud import galeria as crud_galeria, user as crud_user
+from schemas import galeria as galeria_schemas, user as user_schemas
+from database import get_db
+from crud import galeria as crud_galeria, user as crud_user
 # --- FIM DA CORREÇÃO ---
 
 router = APIRouter(prefix="/api/galeria", tags=["Galeria"])
