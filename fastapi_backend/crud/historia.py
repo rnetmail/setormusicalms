@@ -4,8 +4,8 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from ..models.historia import HistoriaItem
-from ..schemas.historia import HistoriaItemCreate, HistoriaItemUpdate
+from models.historia import HistoriaItem
+from schemas.historia import HistoriaItemCreate, HistoriaItemUpdate
 
 def get_historia(db: Session, historia_id: int) -> Optional[HistoriaItem]:
     """Busca um item da história específico pelo seu ID."""
