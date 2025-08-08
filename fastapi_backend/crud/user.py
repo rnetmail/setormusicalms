@@ -6,10 +6,10 @@ from typing import List, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from ..models import user as model_user
-from ..schemas import user as schema_user
-from ..auth.hashing import get_password_hash, verify_password
-from ..auth.security import decode_access_token
+from models import user as model_user
+from schemas import user as schema_user
+from auth.hashing import get_password_hash, verify_password
+from auth.security import decode_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
