@@ -1,19 +1,21 @@
 # /fastapi_backend/crud/galeria.py
-# v2.0 - 2025-07-30 23:15:00 - Corrige importações para estrutura correta do projeto.
+# v3.0 - 2025-08-08 - Final, com importações diretas para estrutura simplificada.
 
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
+# --- CORRETO ---
 from models.galeria import GaleriaItem
 from schemas.galeria import GaleriaItemCreate, GaleriaItemUpdate
 
+# ... (resto do código está correto)
 def get_galeria_item(db: Session, item_id: int) -> Optional[GaleriaItem]:
     """Busca um item da galeria específico pelo seu ID."""
     return db.query(GaleriaItem).filter(GaleriaItem.id == item_id).first()
 
 def get_galeria_items(db: Session, skip: int = 0, limit: int = 100) -> List[GaleriaItem]:
     """Lista todos os itens da galeria com paginação."""
-    return db.query(GaleriaItem).offset(skip).limit(limit).all()
+    return db.query(GaleriaItem).order_by(GaleriaItem.id.desc()).offset(skip).limit(limit).all()
 
 def create_galeria_item(db: Session, item: GaleriaItemCreate) -> GaleriaItem:
     """Cria um novo item da galeria no banco de dados."""
