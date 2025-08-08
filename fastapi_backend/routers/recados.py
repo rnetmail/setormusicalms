@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 # --- INÍCIO DA CORREÇÃO ---
-# Importações absolutas a partir da raiz do projeto 'app'
-from app.schemas import recado as recado_schemas, user as user_schemas
-from app.database import get_db
-from app.crud import recado as crud_recado, user as crud_user
+# Importações absolutas a partir da raiz do projeto
+from schemas import recado as recado_schemas, user as user_schemas
+from database import get_db
+from crud import recado as crud_recado, user as crud_user
 # --- FIM DA CORREÇÃO ---
 
 router = APIRouter(prefix="/api/recados", tags=["Recados"])
