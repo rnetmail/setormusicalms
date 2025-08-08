@@ -1,7 +1,7 @@
 # fastapi_backend/models/recado.py
 # Versão 01 25/07/2025 13:45
 from sqlalchemy import Column, Integer, String, Boolean, Date, Text
-from app.database import Base
+from database import Base
 
 class RecadoItem(Base):
     """
