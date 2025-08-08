@@ -1,11 +1,14 @@
 # /fastapi_backend/crud/agenda.py
-# v2.0 - 2025-07-30 23:13:00 - Corrige importações para estrutura correta do projeto.
+# v3.0 - 2025-08-08 - Final, com importações diretas para estrutura simplificada.
 
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from ..models.agenda import AgendaItem
-from ..schemas.agenda import AgendaItemCreate, AgendaItemUpdate
+# --- INÍCIO DA CORREÇÃO ---
+# As importações agora são diretas, pois os módulos são vizinhos.
+from models.agenda import AgendaItem
+from schemas.agenda import AgendaItemCreate, AgendaItemUpdate
+# --- FIM DA CORREÇÃO ---
 
 def get_agenda_item(db: Session, item_id: int) -> Optional[AgendaItem]:
     """Busca um item da agenda específico pelo seu ID."""
@@ -13,7 +16,7 @@ def get_agenda_item(db: Session, item_id: int) -> Optional[AgendaItem]:
 
 def get_agenda_items(db: Session, skip: int = 0, limit: int = 100) -> List[AgendaItem]:
     """Lista todos os itens da agenda com paginação."""
-    return db.query(AgendaItem).offset(skip).limit(limit).all()
+    return db.query(AgendaItem).order_by(AgendaItem.date.desc()).offset(skip).limit(limit).all()
 
 def create_agenda_item(db: Session, item: AgendaItemCreate) -> AgendaItem:
     """Cria um novo item da agenda no banco de dados."""
@@ -42,4 +45,3 @@ def delete_agenda_item(db: Session, item_id: int) -> bool:
         db.commit()
         return True
     return False
-
