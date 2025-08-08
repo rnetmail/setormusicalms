@@ -2,6 +2,7 @@
 # v3.0 - 2025-08-06 17:32:00 - Simplifica importações e corrige estrutura.
 
 from fastapi import FastAPI
+from routers import auth, users, recados, agenda, historia, galeria, repertorio
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
