@@ -38,7 +38,7 @@ jobs:
 
   build_and_push:
     name: 🏗️ Construir e Publicar Imagens
-    needs: test
+    # needs: test  # Removido para permitir execução independente
     runs-on: ubuntu-latest
     # Remover condição que impede execução == 'refs/heads/main' && github.event_name == 'push'
     permissions:
