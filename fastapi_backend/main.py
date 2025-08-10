@@ -1,5 +1,5 @@
 # /fastapi_backend/main.py
-# v5.0 - 2025-08-08 - Final, com estrutura simplificada e importações diretas.
+# v6.0 - 2025-08-10 20:30 - Fix ImportError - Remove app folder references
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,27 +13,27 @@ from routers import auth, users, recados, agenda, historia, galeria, repertorio
 database.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(
-    title="Setor Musical MS API",
-    description="API para o sistema de gerenciamento do Setor Musical.",
-    version="1.0.0"
+        title="Setor Musical MS API",
+        description="API para o sistema de gerenciamento do Setor Musical.",
+        version="1.0.0"
 )
 
 # Configuração do CORS
 origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://localhost:8001",
-    "https://setormusicalms.art.br",
-    "http://setormusicalms.art.br",
+        "http://localhost",
+        "http://localhost:3000",
+        "http://localhost:8001",
+        "https://setormusicalms.art.br",
+        "http://setormusicalms.art.br",
 ]
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
- )
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+)
 
 # Inclui as rotas na aplicação
 app.include_router(auth.router)
@@ -47,8 +47,8 @@ app.include_router(repertorio.router)
 # Endpoints básicos de saúde
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API do Setor Musical MS", "status": "ok"}
+        return {"message": "Bem-vindo à API do Setor Musical MS", "status": "ok"}
 
 @app.get("/api/health")
 def api_health_check():
-    return {"status": "ok", "service": "api"}
+        return {"status": "ok", "service": "backend"}
