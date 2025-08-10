@@ -40,7 +40,7 @@ jobs:
     name: 🏗️ Construir e Publicar Imagens
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Remover condição que impede execução == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
       packages: write
