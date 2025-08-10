@@ -1,5 +1,5 @@
-# /fastapi_backend/app/routers/users.py
-# v2.1 - 2025-08-07 - Corrige importações para absolutas.
+# /fastapi_backend/routers/users.py
+# v3.0 - 2025-08-10 20:30 - Corrige importações para absoluta sem pasta app
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,32 +11,33 @@ from database import get_db
 from crud import user as crud_user
 # --- FIM DA CORREÇÃO ---
 
-router = APIRouter(prefix="/api/users", tags=["Users"])
+router = APIRouter(prefix="/api/users", tags=["users"])
 
 @router.post("/", response_model=user_schemas.User, status_code=status.HTTP_201_CREATED)
 def create_user(user: user_schemas.UserCreate, db: Session = Depends(get_db)):
-    """
-    Cria um novo usuário no banco de dados.
-    """
-    db_user = crud_user.get_user_by_email(db, email=user.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        """
+            Cria um novo usuário no banco de dados.
+                """
+        db_user = crud_user.get_user_by_email(db, email=user.email)
+        if db_user:
+                    raise HTTPException(status_code=400, detail="Email already registered")
+
     return crud_user.create_user(db=db, user=user)
 
 @router.get("/", response_model=List[user_schemas.User])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """
-    Retorna uma lista de usuários.
-    """
-    users = crud_user.get_users(db, skip=skip, limit=limit)
-    return users
+        """
+            Retorna uma lista de usuários.
+                """
+        users = crud_user.get_users(db, skip=skip, limit=limit)
+        return users
 
 @router.get("/{user_id}", response_model=user_schemas.User)
 def read_user(user_id: int, db: Session = Depends(get_db)):
-    """
-    Retorna um usuário específico pelo ID.
-    """
-    db_user = crud_user.get_user(db, user_id=user_id)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
+        """
+            Retorna um usuário específico pelo ID.
+                """
+        db_user = crud_user.get_user(db, user_id=user_id)
+        if db_user is None:
+                    raise HTTPException(status_code=404, detail="User not found")
+                return db_user
