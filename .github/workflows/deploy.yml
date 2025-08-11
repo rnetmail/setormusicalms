@@ -15,7 +15,7 @@ env:
 
 jobs:
   test:
-    name: 🧪 Testar Build e Saúde
+    name: "🧪 Testar Build e Saúde"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
@@ -37,7 +37,7 @@ jobs:
         run: docker compose down
 
   build_and_push:
-    name: 🏗️ Construir e Publicar Imagens
+    name: "🏗️ Construir e Publicar Imagens"
     # needs: test  # Removido para permitir execução independente
     runs-on: ubuntu-latest
     # Remover condição que impede execução == 'refs/heads/main' && github.event_name == 'push'
@@ -69,7 +69,7 @@ jobs:
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
 
   deploy:
-    name: 🚀 Implementar na VPS
+    name: "🚀 Implementar na VPS"
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: prod
