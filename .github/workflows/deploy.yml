@@ -82,7 +82,7 @@ jobs:
             cd ${{ secrets.PROJECT_PATH_ON_VPS }}
             git fetch origin && git reset --hard origin/main
             mkdir -p ~/.docker
-            echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
+            echo "${{ secrets.DOCKER_CONFIG_JSON }}" > ~/.docker/config.json
             chmod 600 ~/.docker/config.json
             docker compose pull
             docker compose up -d --force-recreate --remove-orphans
