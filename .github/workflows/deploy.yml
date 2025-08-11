@@ -1,5 +1,4 @@
-# .github/workflows/deploy.yml - Versão Definitiva alinhada com o README.md
-# .github/workflows/deploy.yml - vDefinitiva-2 - Corrige sintaxe YAML
+# .github/workflows/deploy.yml - Versão Corrigida Final
 name: CI/CD - Testar, Construir e Implementar
 
 on:
@@ -20,25 +19,31 @@ jobs:
     steps:
       - name: "Checkout do código"
         uses: actions/checkout@v4
+
       - name: "Iniciar serviços com Docker Compose"
         run: docker compose up -d --build
-      - name: Aguardar e validar saúde da API
+
+      - name: "Aguardar e validar saúde da API"
         run: |
           echo "⏳ Aguardando backend ficar saudável..."
           for i in {1..10}; do
             if docker compose ps | grep 'setormusicalms-backend' | grep -q '(healthy)'; then
               echo "✅ Backend está saudável!"
               exit 0
-            fi; sleep 15
+            fi
+            sleep 15
           done
-          echo "❌ ERRO: Backend não ficou saudável em 90 segundos."; docker compose logs backend; exit 1
+          echo "❌ ERRO: Backend não ficou saudável em 90 segundos."
+          docker compose logs backend
+          exit 1
+
       - name: "Encerrar containers após testes"
         if: always()
         run: docker compose down
 
   build_and_push:
     name: "🏗️ Construir e Publicar Imagens"
-    needs: test 
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,18 +51,21 @@ jobs:
     steps:
       - name: "Checkout do código"
         uses: actions/checkout@v4
+
       - name: "Login no GitHub Container Registry (GHCR)"
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: "Build e Push da Imagem do Backend"
         uses: docker/build-push-action@v5
         with:
           context: ./fastapi_backend
           push: true
           tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
+
       - name: "Build e Push da Imagem do Frontend"
         uses: docker/build-push-action@v5
         with:
