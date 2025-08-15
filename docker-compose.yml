@@ -1,27 +1,49 @@
-# /docker-compose.yml - Versão Final e Definitiva
-# version: '3.8'
+# /docker-compose.yml - Versão PostgreSQL Exclusiva
+# Atualizado em 12/08/2025 - Configurado para usar exclusivamente PostgreSQL
 
 services:
+  # Serviço de banco de dados PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: setormusicalms-db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=mestre
+      - POSTGRES_PASSWORD=Setor@MS25
+      - POSTGRES_DB=setormusicalms_db
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mestre -d setormusicalms_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+      
   backend:
     # Usa a imagem construída pelo CI/CD, que contém o código correto.
     image: ghcr.io/rnetmail/setormusicalms-backend:latest
     container_name: setormusicalms-backend
-    # O comando já está correto para a estrutura simplificada.
     command: uvicorn main:app --host 0.0.0.0 --port 8000
-    volumes:
-      # --- A CORREÇÃO CRUCIAL ESTÁ AQUI ---
-      # REMOVEMOS a linha que montava o código local: '- ./fastapi_backend:/app'
-      # Mantemos apenas o volume para persistir o banco de dados.
-      - sqlite_data:/app/data
     environment:
-      - DATABASE_URL=sqlite:///data/setormusical.db
+      # Configurado para usar PostgreSQL exclusivamente
+      - DATABASE_URL=postgresql://mestre:Setor@MS25@db:5432/setormusicalms_db
+      - POSTGRES_USER=mestre
+      - POSTGRES_PASSWORD=Setor@MS25
+      - POSTGRES_DB=setormusicalms_db
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     expose:
       - "8000"
     networks:
       - app-network
     healthcheck:
-      # O health check agora aponta para a raiz, que é mais simples e confiável.
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 20s
       timeout: 10s
@@ -45,15 +67,15 @@ services:
       - "8001:80"
     volumes:
       - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf
-        depends_on:
+    depends_on:
       backend:
-         # Agora o healthcheck é crucial e confiável.
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - app-network
 
 volumes:
-  sqlite_data:
+  postgres_data:
     driver: local
 
 networks:
