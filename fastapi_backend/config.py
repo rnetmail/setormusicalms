@@ -26,7 +26,9 @@ class Settings(BaseSettings):
     
     # URL de conexão com o banco de dados PostgreSQL.
     # Este valor será construído com os parâmetros de ambiente no docker-compose.yml.
-    DATABASE_URL: str = "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+    @property
+    def DATABASE_URL(self) -> str:
+        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     # Lista de origens permitidas a fazer requisições para a API (CORS).
     CORS_ORIGINS: List[str] = ["*"]
