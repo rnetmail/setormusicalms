@@ -1,6 +1,4 @@
 # .github/workflows/deploy.yml
-# Versão 123  -  Final, Completa e Funcional
-
 name: CI/CD - Testar, Construir, Implementar e Validar
 
 on:
@@ -24,10 +22,8 @@ jobs:
 
       - name: 3. Executar testes dentro do contêiner
         run: |
-          # Espera a API ficar saudável antes de rodar os testes
           echo "⏳ Aguardando saúde da API..."
           timeout=90
-          # CORREÇÃO: Executa o curl de DENTRO do contêiner para garantir a conexão
           until docker compose exec -T backend curl -sSf http://localhost:8000/api/health; do
             timeout=$((timeout - 5))
             if [ $timeout -le 0 ]; then
@@ -39,11 +35,9 @@ jobs:
           done
           echo "✅ API saudável!"
 
-          # Inicializa admin e testa endpoint básico
           echo "🚀 Inicializando admin e testando endpoint..."
           docker compose exec -T backend python /app/init_admin.py
-          
-          # Teste simples de saúde da API
+
           if docker compose exec -T backend curl -sSf http://localhost:8000/api/health | grep -q '"status":"healthy"'; then
             echo "✅ Teste básico passou - API está respondendo corretamente!"
           else
@@ -64,30 +58,28 @@ jobs:
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
+
       - name: Login no GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build e Push Backend
         uses: docker/build-push-action@v5
         with:
           context: ./fastapi_backend
           push: true
           tags: ${{ env.IMAGE_NAME_BACKEND }}:latest
+
       - name: Build e Push Frontend
         uses: docker/build-push-action@v5
         with:
-          context: .
-          dockerfile: Dockerfile
+          context: ./frontend
+          dockerfile: ./frontend/Dockerfile
           push: true
           tags: ${{ env.IMAGE_NAME_FRONTEND }}:latest
-
-  # .github/workflows/deploy.yml
-# Versão Final - Robusta e Automatizada
-
-# ... (início do arquivo, jobs 'test' e 'build_and_push' sem alterações) ...
 
   deploy_and_validate:
     needs: build_and_push
@@ -103,50 +95,56 @@ jobs:
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            set -e  # Encerra o script se qualquer comando falhar
+            set -e
             PROJECT_DIR="${{ secrets.PROJECT_PATH_ON_VPS }}"
-
-            echo ">>> [1/8] Acessando o diretório do projeto: $PROJECT_DIR"
+            echo ">>> [1/9] Acessando o diretório do projeto: $PROJECT_DIR"
             cd $PROJECT_DIR
-            
-            echo ">>> [2/8] Verificando e corrigindo permissões do diretório..."
+
+            echo ">>> [2/9] Verificando e corrigindo permissões..."
             OWNER=$(stat -c '%U' .)
             if [ "$OWNER" != "${{ secrets.VPS_SSH_USER }}" ]; then
-              echo "Proprietário incorreto ('$OWNER'), corrigindo para '${{ secrets.VPS_SSH_USER }}'..."
-              # Usamos sudo aqui, pois o usuário atual não tem permissão para chown
+              echo "Proprietário incorreto ('$OWNER'), corrigindo..."
               sudo chown -R ${{ secrets.VPS_SSH_USER }}:${{ secrets.VPS_SSH_USER }} .
               echo "Permissões corrigidas."
             else
               echo "Permissões já estão corretas."
             fi
 
-            echo ">>> [3/8] Atualizando o código-fonte..."
+            echo ">>> [3/9] Atualizando o código-fonte..."
             git fetch origin
             git reset --hard origin/main
 
-            echo ">>> [4/8] Autenticando no GHCR..."
+            echo ">>> [4/9] Autenticando no GHCR..."
             mkdir -p ~/.docker
             echo '${{ secrets.DOCKER_CONFIG_JSON }}' > ~/.docker/config.json
 
-            echo ">>> [5/8] Subindo os novos contêineres..."
-            # O --build garante que as imagens sejam reconstruídas se os Dockerfiles mudarem
+            echo ">>> [5/9] Subindo os novos contêineres..."
+            docker compose down --remove-orphans
+            docker compose pull
             docker compose up -d --build --force-recreate
 
-            echo ">>> [6/8] Inicializando o banco de dados (criando admin se necessário)..."
-            # É seguro rodar sempre, pois o script verifica se o admin já existe
+            echo ">>> [6/9] Inicializando o banco de dados..."
             docker compose exec backend python /app/init_admin.py
 
-            echo ">>> [7/8] Aguardando 15s para a aplicação estabilizar..."
-            sleep 15
+            echo ">>> [7/9] Aguardando API backend ficar saudável..."
+            timeout=90
+            until curl -sSf http://127.0.0.1:8001/api/health > /dev/null; do
+              timeout=$((timeout - 5))
+              if [ $timeout -le 0 ]; then
+                echo "❌ Backend não ficou pronto em 90s"
+                docker compose logs backend --tail=50
+                exit 1
+              fi
+              sleep 5
+            done
+            echo "✅ Backend pronto!"
 
-            echo ">>> [8/8] Realizando teste de fumaça: Login na API..."
-            # Simula um login e verifica se um token de acesso é retornado
-            # NOTA: Ajuste o endpoint '/api/auth/login' se o seu for diferente
+            echo ">>> [8/9] Realizando teste de fumaça: Login na API..."
             if curl -s -X POST "http://127.0.0.1:8001/api/auth/login" \
               -H "Content-Type: application/x-www-form-urlencoded" \
               -d "username=admin&password=Setor@MS25" | grep -q '"access_token"'; then
               echo "✅ Teste de fumaça passou: Login bem-sucedido!"
-              echo "Limpando imagens antigas do Docker..."
+              echo "Limpando imagens antigas..."
               docker image prune -af
             else
               echo "❌ ERRO: Teste de fumaça falhou - Não foi possível fazer login."
