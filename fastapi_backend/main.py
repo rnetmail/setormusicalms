@@ -1,8 +1,10 @@
 # /fastapi_backend/main.py
 # v6.0 - 2025-08-10 20:30 - Fix ImportError - Remove app folder references
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import logging
+import traceback
 
 # --- CORREÇÃO ---
 # Importa os módulos e o objeto Base diretamente.
@@ -51,4 +53,26 @@ def read_root():
 
 @app.get("/api/health")
 def api_health_check():
-        return {"status": "ok", "service": "backend"}
+    try:
+        # Test database connection
+        from sqlalchemy import text
+        
+        with database.engine.connect() as connection:
+            result = connection.execute(text("SELECT 1"))
+            db_status = "connected" if result.fetchone() else "disconnected"
+        
+        return {
+            "status": "healthy",
+            "service": "backend", 
+            "database": db_status,
+            "message": "API is running successfully"
+        }
+    except Exception as e:
+        logging.error(f"Health check failed: {str(e)}")
+        logging.error(traceback.format_exc())
+        raise HTTPException(status_code=503, detail={
+            "status": "unhealthy", 
+            "service": "backend",
+            "error": str(e),
+            "database": "disconnected"
+        })
