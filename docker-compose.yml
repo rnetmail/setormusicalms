@@ -35,6 +35,7 @@ services:
       - POSTGRES_DB=setormusicalms_db
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
+      - SECRET_KEY=sua-chave-secreta-super-forte-aqui-min-32-chars
     depends_on:
       db:
         condition: service_healthy
@@ -44,11 +45,11 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 20s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 15s
+      retries: 8
+      start_period: 90s
 
   frontend:
     # Usa a imagem construída pelo CI/CD.
