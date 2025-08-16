@@ -26,7 +26,8 @@ services:
     # Usa a imagem construída pelo CI/CD, que contém o código correto.
     image: ghcr.io/rnetmail/setormusicalms-backend:latest
     container_name: setormusicalms-backend
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    # command: uvicorn main:app --host 0.0.0.0 --port 8000
+    command: uvicorn fastapi_backend.main:app --host 0.0.0.0 --port 8000
     environment:
       # Configurado para usar PostgreSQL exclusivamente
       - DATABASE_URL=postgresql://mestre:Setor@MS25@db:5432/setormusicalms_db
